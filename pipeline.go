@@ -25,11 +25,11 @@ func NewPipeline(starter PipelineStarter, stages ...PipelineStage) *Pipeline {
 // on the PipelineStarter to let it know to start grabbing and sending data into the
 // subsequent Pipeline
 //
-// Run will return an exitChan that should be waited on so your main function doesn't
-// return prematurely. Any stage of the pipeline can send to the exitChan to halt
+// Run will return an killChan that should be waited on so your main function doesn't
+// return prematurely. Any stage of the pipeline can send to the killChan to halt
 // execution. Your main() function check if the value is an error or nil to know if
 // execution was a failure or a success (nil being the success value).
-func (p *Pipeline) Run() (exitChan chan error) {
+func (p *Pipeline) Run() (killChan chan error) {
 	// Print an overview of the pipeline
 	stageNames := []string{fmt.Sprintf("%v", p.Starter)}
 	for _, s := range p.Stages {
@@ -41,13 +41,13 @@ func (p *Pipeline) Run() (exitChan chan error) {
 	// so that when close()'d it will cut off the processing in a left
 	// to right manner.
 	// Example:
-	//	Pipeline: |Starter| dataChan0-> |Stage0| dataChan1-> |Stage1| -> exitChan
+	//	Pipeline: |Starter| dataChan0-> |Stage0| dataChan1-> |Stage1| -> killChan
 
 	dataChans := make([]chan Data, len(p.Stages))
 	for i := range dataChans {
 		dataChans[i] = make(chan Data)
 	}
-	exitChan = make(chan error)
+	killChan = make(chan error)
 
 	// Setup the channel and data-handling between all the Stages
 	// (Refer to example above for understanding how indexes are mapped)
@@ -58,7 +58,7 @@ func (p *Pipeline) Run() (exitChan chan error) {
 			outputChan = dataChans[i+1]
 		}
 		// Each stage runs in it's own goroutine
-		go processStage(stage, exitChan, inputChan, outputChan)
+		go processStage(stage, killChan, inputChan, outputChan)
 	}
 
 	// Setup the Starter stage and kick off the pipeline execution
@@ -66,24 +66,24 @@ func (p *Pipeline) Run() (exitChan chan error) {
 	go func() {
 		outputChan := dataChans[0]
 		LogDebug("Pipeline: Starting", p.Starter)
-		p.Starter.Start(outputChan, exitChan)
+		p.Starter.Start(outputChan, killChan)
 	}()
 
-	return exitChan
+	return killChan
 }
 
-func processStage(stage PipelineStage, exitChan chan error, inputChan, outputChan chan Data) {
+func processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan Data) {
 	LogDebug("Pipeline: Stage", stage, "waiting for data on chan", inputChan)
 	for data := range inputChan {
 		LogDebug("Pipeline: Stage", stage, "receiving data:", data)
-		stage.HandleData(data, outputChan, exitChan)
+		stage.HandleData(data, outputChan, killChan)
 	}
 	LogDebug("Pipeline: Stage", stage, "finishing")
-	stage.Finish(outputChan, exitChan)
+	stage.Finish(outputChan, killChan)
 	LogInfo("Pipeline: Stage", stage, "finished")
 	// If this is the final stage, exit the pipeline
 	if outputChan == nil {
 		LogStatus("Pipeline: Final stage (", stage, ") complete. Exiting pipeline.")
-		exitChan <- nil
+		killChan <- nil
 	}
 }

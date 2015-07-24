@@ -19,18 +19,18 @@ func NewIoWriter(writer io.Writer) *IoWriter {
 }
 
 // HandleData - see interface in stages.go for documentation.
-func (w *IoWriter) HandleData(data ratchet.Data, outputChan chan ratchet.Data, exitChan chan error) {
+func (w *IoWriter) HandleData(data ratchet.Data, outputChan chan ratchet.Data, killChan chan error) {
 	bytesWritten, err := w.Writer.Write(data)
 	if err != nil {
 		ratchet.LogError("IoWriter:", err.Error())
-		exitChan <- err
+		killChan <- err
 	} else {
 		ratchet.LogDebug("\nIoWriter:", bytesWritten, "bytes written")
 	}
 }
 
 // Finish - see interface in stages.go for documentation.
-func (w *IoWriter) Finish(outputChan chan ratchet.Data, exitChan chan error) {
+func (w *IoWriter) Finish(outputChan chan ratchet.Data, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)
 	}
