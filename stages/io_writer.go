@@ -25,7 +25,7 @@ func (w *IoWriter) HandleData(data ratchet.Data, outputChan chan ratchet.Data, k
 		ratchet.LogError("IoWriter:", err.Error())
 		killChan <- err
 	} else {
-		ratchet.LogDebug("\nIoWriter:", bytesWritten, "bytes written")
+		ratchet.LogDebug("IoWriter:", bytesWritten, "bytes written")
 	}
 }
 

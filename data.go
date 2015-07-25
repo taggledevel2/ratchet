@@ -2,6 +2,8 @@ package ratchet
 
 import (
 	"encoding/json"
+	"fmt"
+	"runtime/debug"
 )
 
 // Data is the generic type that is passed along data channels.
@@ -15,25 +17,19 @@ type Data []byte
 func NewData(v interface{}) (Data, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		LogError("Data: failure to marshal data:", err.Error())
+		LogError(fmt.Sprintf("Data: failure to marshal data %+v - error is \"%v\"", v, err.Error()))
+		LogDebug(string(debug.Stack()))
 	}
 	return data, err
 }
 
-// NewDataFromStruct is a simple wrapper for json.Marshal
-func NewDataFromStruct(strct interface{}) (Data, error) {
-	data, err := json.Marshal(strct)
+// ParseData is a simple wrapper for json.Unmarshal
+func ParseData(data Data, v interface{}) error {
+	err := json.Unmarshal(data, v)
 	if err != nil {
-		LogError("Data: failure to marshal data:", err.Error())
-	}
-	return data, err
-}
-
-// ParseDataIntoStructPtr is a simple wrapper for json.Unmarshal
-func ParseDataIntoStructPtr(data Data, strctPtr interface{}) error {
-	err := json.Unmarshal(data, strctPtr)
-	if err != nil {
-		LogError("Data: failure to unmarshal data:", err.Error())
+		LogError(fmt.Sprintf("Data: failure to unmarshal data into %+v - error is \"%v\"", v, err.Error()))
+		LogDebug(fmt.Sprintf("	Failed Data: %+v", string(data)))
+		LogDebug(string(debug.Stack()))
 	}
 	return err
 }

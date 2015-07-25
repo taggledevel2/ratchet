@@ -4,7 +4,6 @@ import (
 	"database/sql"
 
 	"github.com/DailyBurn/ratchet"
-	"github.com/DailyBurn/ratchet/util"
 )
 
 // SQLQueryer is a starter that runs the given SQL and passes the
@@ -22,8 +21,8 @@ func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
 
 // Start - see interface in stages.go for documentation.
 func (s *SQLQueryer) Start(outputChan chan ratchet.Data, killChan chan error) {
-	// See util/sql.go
-	dataChan, err := util.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
+	// See sql.go
+	dataChan, err := ratchet.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
 	if err != nil {
 		killChan <- err
 	}

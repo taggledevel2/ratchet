@@ -11,6 +11,7 @@ import (
 type Pipeline struct {
 	Starter PipelineStarter
 	Stages  []PipelineStage
+	timer   *Timer
 }
 
 // NewPipeline returns a a new *Pipeline given a starter and variable number of stages that will
@@ -49,6 +50,8 @@ func (p *Pipeline) Run() (killChan chan error) {
 	}
 	killChan = make(chan error)
 
+	p.timer = StartTimer()
+
 	// Setup the channel and data-handling between all the Stages
 	// (Refer to example above for understanding how indexes are mapped)
 	for i, stage := range p.Stages {
@@ -58,7 +61,7 @@ func (p *Pipeline) Run() (killChan chan error) {
 			outputChan = dataChans[i+1]
 		}
 		// Each stage runs in it's own goroutine
-		go processStage(stage, killChan, inputChan, outputChan)
+		go p.processStage(stage, killChan, inputChan, outputChan)
 	}
 
 	// Setup the Starter stage and kick off the pipeline execution
@@ -72,18 +75,19 @@ func (p *Pipeline) Run() (killChan chan error) {
 	return killChan
 }
 
-func processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan Data) {
+func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan Data) {
 	LogDebug("Pipeline: Stage", stage, "waiting for data on chan", inputChan)
 	for data := range inputChan {
-		LogDebug("Pipeline: Stage", stage, "receiving data:", data)
+		LogDebug("Pipeline: Stage", stage, "receiving data:", string(data))
 		stage.HandleData(data, outputChan, killChan)
 	}
-	LogDebug("Pipeline: Stage", stage, "finishing")
+	LogDebug("Pipeline: Stage", stage, "finishing...")
 	stage.Finish(outputChan, killChan)
-	LogInfo("Pipeline: Stage", stage, "finished")
+	LogInfo("Pipeline: Stage", stage, "finished.", p.timer)
 	// If this is the final stage, exit the pipeline
 	if outputChan == nil {
 		LogStatus("Pipeline: Final stage (", stage, ") complete. Exiting pipeline.")
+		LogStatus("Pipeline:", p.timer.Stop())
 		killChan <- nil
 	}
 }
