@@ -14,16 +14,16 @@ type testStruct struct {
 func ExampleNewJSON() {
 	t := testStruct{A: 1, B: 2}
 
-	data, _ := data.NewJSON(t)
+	d, _ := data.NewJSON(t)
 
-	fmt.Println(string(data))
+	fmt.Println(string(d))
 	// Output: {"A":1,"B":2}
 }
 
 func ExampleParseJSON() {
 	d := []byte(`{"A":1,"B":2}`)
 	t := testStruct{}
-	data.ParseJSON(data, &t)
+	data.ParseJSON(d, &t)
 
 	fmt.Println(fmt.Sprintf("%+v", t))
 	// Output: {A:1 B:2}
