@@ -29,12 +29,10 @@ func NewSQLInserter(db *sql.DB, tableName string) *SQLInserter {
 // HandleData - see interface in stages.go for documentation.
 func (s *SQLInserter) HandleData(data ratchet.Data, outputChan chan ratchet.Data, killChan chan error) {
 	err := ratchet.SQLInsertData(s.db, data, s.TableName, s.OnDupKeyUpdate)
-	if err != nil {
-		killChan <- err
-	}
+	ratchet.KillPipelineIfErr(err, killChan)
 }
 
-// Finish - see interface in stages.go for documentation.
+// Finish - see interface for documentation.
 func (s *SQLInserter) Finish(outputChan chan ratchet.Data, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)

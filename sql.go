@@ -94,27 +94,10 @@ func sendErr(err error, dataChan chan Data) {
 // where the keys are column names and the
 // the values are SQL values to be inserted into those columns.
 func SQLInsertData(db *sql.DB, data Data, tableName string, onDupKeyUpdate bool) error {
-	var v interface{}
-	err := ParseData(data, &v)
+	objects, err := ObjectsFromData(data)
 	if err != nil {
 		return err
 	}
-
-	var objects []map[string]interface{}
-	// check if we have a single object or a slice of objects
-	switch vv := v.(type) {
-	case []interface{}:
-		for _, o := range vv {
-			objects = append(objects, o.(map[string]interface{}))
-		}
-	case map[string]interface{}:
-		objects = []map[string]interface{}{vv}
-	case []map[string]interface{}:
-		objects = vv
-	default:
-		return fmt.Errorf("SQLInsertData: unsupported data type: %T", vv)
-	}
-
 	return insertObjects(db, objects, tableName, onDupKeyUpdate)
 }
 
