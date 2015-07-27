@@ -1,20 +1,24 @@
-package ratchet
+// Package util has various helper functions used by components of ratchet.
+package util
 
 import (
 	"database/sql"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/logger"
 )
 
 // GetDataFromSQLQuery is a util function that, given a properly intialized sql.DB
-// and a valid SQL query, will handle executing the query and getting back Data
-// objects. This function is asynch, and Data should be received on teh return
+// and a valid SQL query, will handle executing the query and getting back data.JSON
+// objects. This function is asynch, and data.JSON should be received on the return
 // data channel. If there was a problem setting up the query, then an error will also be
 // returned immediately. It is also possible for errors to occur during execution as data
-// is retrieved from the query. If this happens, the Data object returned will be a JSON
+// is retrieved from the query. If this happens, the object returned will be a JSON
 // object in the form of {"Error": "description"}.
-func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan Data, error) {
+func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan data.JSON, error) {
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -25,7 +29,7 @@ func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan Data, er
 		return nil, err
 	}
 
-	dataChan := make(chan Data)
+	dataChan := make(chan data.JSON)
 
 	go func(rows *sql.Rows, columns []string) {
 		defer rows.Close()
@@ -73,28 +77,28 @@ func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan Data, er
 	return dataChan, nil
 }
 
-func sendTableData(tableData []map[string]interface{}, dataChan chan Data) {
-	data, err := NewData(tableData)
+func sendTableData(tableData []map[string]interface{}, dataChan chan data.JSON) {
+	d, err := data.NewJSON(tableData)
 	if err != nil {
 		sendErr(err, dataChan)
 	} else {
-		dataChan <- data
+		dataChan <- d
 	}
 }
 
-func sendErr(err error, dataChan chan Data) {
+func sendErr(err error, dataChan chan data.JSON) {
 	dataChan <- []byte("{\"Error\":\"" + err.Error() + "\"}")
 }
 
 // SQLInsertData abstracts building and executing a SQL INSERT
 // statement for the given Data object.
 //
-// Note that the Data valid JSON object
-// (or a slice of valid objects all with the same keys),
+// Note that the Data must be a valid JSON object
+// (or an array of valid objects all with the same keys),
 // where the keys are column names and the
 // the values are SQL values to be inserted into those columns.
-func SQLInsertData(db *sql.DB, data Data, tableName string, onDupKeyUpdate bool) error {
-	objects, err := ObjectsFromData(data)
+func SQLInsertData(db *sql.DB, d data.JSON, tableName string, onDupKeyUpdate bool) error {
+	objects, err := data.ObjectsFromJSON(d)
 	if err != nil {
 		return err
 	}
@@ -132,7 +136,7 @@ func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName strin
 		return err
 	}
 
-	LogInfo(fmt.Sprintf("SQLInsertData: rows affected = %d, last insert ID = %d", rowCnt, lastID))
+	logger.Info(fmt.Sprintf("SQLInsertData: rows affected = %d, last insert ID = %d", rowCnt, lastID))
 	return nil
 }
 

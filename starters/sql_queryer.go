@@ -1,9 +1,12 @@
+// Package starters holds PipelineStarter implementations that
+// are generic and potentially useful across any ETL project.
 package starters
 
 import (
 	"database/sql"
 
-	"github.com/DailyBurn/ratchet"
+	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/util"
 )
 
 // SQLQueryer is a starter that runs the given SQL and passes the
@@ -20,13 +23,13 @@ func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
 }
 
 // Start - see interface in stages.go for documentation.
-func (s *SQLQueryer) Start(outputChan chan ratchet.Data, killChan chan error) {
+func (s *SQLQueryer) Start(outputChan chan data.JSON, killChan chan error) {
 	// See sql.go
-	dataChan, err := ratchet.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
-	ratchet.KillPipelineIfErr(err, killChan)
+	dataChan, err := util.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
+	util.KillPipelineIfErr(err, killChan)
 
-	for data := range dataChan {
-		outputChan <- data
+	for d := range dataChan {
+		outputChan <- d
 	}
 	close(outputChan)
 }

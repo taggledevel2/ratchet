@@ -1,14 +1,16 @@
+// Package stages holds PipelineStage implementations that
+// are generic and potentially useful across any ETL project.
 package stages
 
 import (
 	"encoding/csv"
 	"fmt"
 	"io"
-
-	"github.com/DailyBurn/ratchet"
+	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/util"
 )
 
-// CsvWriter handles converting ratchet.Data objects into CSV
+// CsvWriter handles converting data.JSON objects into CSV
 // format, and writing them to the given io.Writer. The Data
 // must be a valid JSON object or a slice of valid JSON objects.
 // If you already have Data formatted as a CSV string you can
@@ -25,10 +27,10 @@ func NewCsvWriter(w io.Writer) *CsvWriter {
 }
 
 // HandleData - see interface in stages.go for documentation.
-func (w *CsvWriter) HandleData(data ratchet.Data, outputChan chan ratchet.Data, killChan chan error) {
+func (w *CsvWriter) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	// use util helper to convert Data into []map[string]interface{}
-	objects, err := ratchet.ObjectsFromData(data)
-	ratchet.KillPipelineIfErr(err, killChan)
+	objects, err := data.ObjectsFromJSON(d)
+	util.KillPipelineIfErr(err, killChan)
 
 	rows := [][]string{}
 	if w.WriteHeader && !w.headerWritten {
@@ -49,11 +51,11 @@ func (w *CsvWriter) HandleData(data ratchet.Data, outputChan chan ratchet.Data, 
 	}
 
 	err = w.writer.WriteAll(rows)
-	ratchet.KillPipelineIfErr(err, killChan)
+	util.KillPipelineIfErr(err, killChan)
 }
 
 // Finish - see interface for documentation.
-func (w *CsvWriter) Finish(outputChan chan ratchet.Data, killChan chan error) {
+func (w *CsvWriter) Finish(outputChan chan data.JSON, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)
 	}

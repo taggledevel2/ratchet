@@ -1,9 +1,12 @@
+// Package starters holds PipelineStarter implementations that
+// are generic and potentially useful across any ETL project.
 package starters
 
 import (
 	"io/ioutil"
 
-	"github.com/DailyBurn/ratchet"
+	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/util"
 )
 
 // FileReader is a simple stage that wraps an io.Reader.
@@ -20,10 +23,10 @@ func NewFileReader(filename string) *FileReader {
 }
 
 // Start - see interface in stages.go for documentation.
-func (r *FileReader) Start(outputChan chan ratchet.Data, killChan chan error) {
-	data, err := ioutil.ReadFile(r.filename)
-	ratchet.KillPipelineIfErr(err, killChan)
-	outputChan <- data
+func (r *FileReader) Start(outputChan chan data.JSON, killChan chan error) {
+	d, err := ioutil.ReadFile(r.filename)
+	util.KillPipelineIfErr(err, killChan)
+	outputChan <- d
 	close(outputChan)
 }
 

@@ -1,10 +1,13 @@
+// Package starters holds PipelineStarter implementations that
+// are generic and potentially useful across any ETL project.
 package starters
 
 import (
 	"bufio"
 	"io"
 
-	"github.com/DailyBurn/ratchet"
+	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/util"
 )
 
 // IoReader is a simple stage that wraps an io.Reader.
@@ -21,7 +24,7 @@ func NewIoReader(reader io.Reader) *IoReader {
 }
 
 // Start - see interface in stages.go for documentation.
-func (r *IoReader) Start(outputChan chan ratchet.Data, killChan chan error) {
+func (r *IoReader) Start(outputChan chan data.JSON, killChan chan error) {
 	if r.LineByLine {
 		r.scanLines(outputChan, killChan)
 	} else {
@@ -30,27 +33,27 @@ func (r *IoReader) Start(outputChan chan ratchet.Data, killChan chan error) {
 	close(outputChan)
 }
 
-func (r *IoReader) scanLines(outputChan chan ratchet.Data, killChan chan error) {
+func (r *IoReader) scanLines(outputChan chan data.JSON, killChan chan error) {
 	scanner := bufio.NewScanner(r.Reader)
 	for scanner.Scan() {
 		outputChan <- scanner.Bytes()
 	}
 	err := scanner.Err()
-	ratchet.KillPipelineIfErr(err, killChan)
+	util.KillPipelineIfErr(err, killChan)
 }
 
-func (r *IoReader) bufferedRead(outputChan chan ratchet.Data, killChan chan error) {
+func (r *IoReader) bufferedRead(outputChan chan data.JSON, killChan chan error) {
 	reader := bufio.NewReader(r.Reader)
-	data := make([]byte, r.BufferSize)
+	d := make([]byte, r.BufferSize)
 	for {
-		n, err := reader.Read(data)
+		n, err := reader.Read(d)
 		if err != nil && err != io.EOF {
 			killChan <- err
 		}
 		if n == 0 {
 			break
 		}
-		outputChan <- data
+		outputChan <- d
 	}
 }
 

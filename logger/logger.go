@@ -1,4 +1,4 @@
-package ratchet
+package logger
 
 import (
 	"io"
@@ -14,16 +14,16 @@ const (
 )
 
 // LogLevel can be set to one of:
-// ratchet.LogLevelDebug, ratchet.LogLevelInfo, ratchet.LogLevelError, or ratchet.LogLevelStatus
+// logger.LevelDebug, logger.LevelInfo, logger.LevelError, or logger.LevelStatus
 var LogLevel = LogLevelInfo
 
 // LogFunc can be overridden to totally customize how logging occurs.
 var LogFunc func(lvl int, v ...interface{})
 
-var logger = log.New(os.Stdout, "", log.LstdFlags)
+var defaultLogger = log.New(os.Stdout, "", log.LstdFlags)
 
-// LogDebug logs output when LogLevel is set to at least Debug level
-func LogDebug(v ...interface{}) {
+// Debug logs output when LogLevel is set to at least Debug level
+func Debug(v ...interface{}) {
 	if LogFunc != nil {
 		LogFunc(LogLevelDebug, v)
 	} else {
@@ -31,8 +31,8 @@ func LogDebug(v ...interface{}) {
 	}
 }
 
-// LogInfo logs output when LogLevel is set to at least Info level
-func LogInfo(v ...interface{}) {
+// Info logs output when LogLevel is set to at least Info level
+func Info(v ...interface{}) {
 	if LogFunc != nil {
 		LogFunc(LogLevelInfo, v)
 	} else {
@@ -40,8 +40,8 @@ func LogInfo(v ...interface{}) {
 	}
 }
 
-// LogError logs output when LogLevel is set to at least Error level
-func LogError(v ...interface{}) {
+// Error logs output when LogLevel is set to at least Error level
+func Error(v ...interface{}) {
 	if LogFunc != nil {
 		LogFunc(LogLevelError, v)
 	} else {
@@ -49,9 +49,9 @@ func LogError(v ...interface{}) {
 	}
 }
 
-// LogStatus logs output when LogLevel is set to at least Status level
+// Status logs output when LogLevel is set to at least Status level
 // Status output is high-level status events like stages starting/completing.
-func LogStatus(v ...interface{}) {
+func Status(v ...interface{}) {
 	if LogFunc != nil {
 		LogFunc(LogLevelStatus, v)
 	} else {
@@ -61,7 +61,7 @@ func LogStatus(v ...interface{}) {
 
 func logit(lvl int, v ...interface{}) {
 	if lvl >= LogLevel {
-		logger.Println(v...)
+		defaultLogger.Println(v...)
 	}
 }
 
@@ -77,5 +77,5 @@ func SetLogfile(filepath string) {
 
 // SetOutput allows setting log output to any custom io.Writer.
 func SetOutput(out io.Writer) {
-	logger = log.New(out, "", log.LstdFlags)
+	defaultLogger = log.New(out, "", log.LstdFlags)
 }
