@@ -1,3 +1,4 @@
+// Package logger is a simple but customizable logger used by ratchet.
 package logger
 
 import (
