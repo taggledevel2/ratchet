@@ -23,9 +23,7 @@ func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
 func (s *SQLQueryer) Start(outputChan chan ratchet.Data, killChan chan error) {
 	// See sql.go
 	dataChan, err := ratchet.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
-	if err != nil {
-		killChan <- err
-	}
+	ratchet.KillPipelineIfErr(err, killChan)
 
 	for data := range dataChan {
 		outputChan <- data

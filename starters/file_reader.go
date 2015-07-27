@@ -22,10 +22,7 @@ func NewFileReader(filename string) *FileReader {
 // Start - see interface in stages.go for documentation.
 func (r *FileReader) Start(outputChan chan ratchet.Data, killChan chan error) {
 	data, err := ioutil.ReadFile(r.filename)
-	if err != nil {
-		ratchet.LogError("FileReader:", err.Error())
-		killChan <- err
-	}
+	ratchet.KillPipelineIfErr(err, killChan)
 	outputChan <- data
 	close(outputChan)
 }

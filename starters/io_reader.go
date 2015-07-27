@@ -35,9 +35,8 @@ func (r *IoReader) scanLines(outputChan chan ratchet.Data, killChan chan error) 
 	for scanner.Scan() {
 		outputChan <- scanner.Bytes()
 	}
-	if err := scanner.Err(); err != nil {
-		killChan <- err
-	}
+	err := scanner.Err()
+	ratchet.KillPipelineIfErr(err, killChan)
 }
 
 func (r *IoReader) bufferedRead(outputChan chan ratchet.Data, killChan chan error) {
