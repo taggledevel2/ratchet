@@ -1,4 +1,4 @@
-package starters
+package stages
 
 import (
 	"database/sql"
@@ -20,8 +20,8 @@ func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
 	return &SQLQueryer{db: dbConn, query: sql, BatchSize: 100}
 }
 
-// Start - see interface in stages.go for documentation.
-func (s *SQLQueryer) Start(outputChan chan data.JSON, killChan chan error) {
+// HandleData - see interface for documentation.
+func (s *SQLQueryer) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	// See sql.go
 	dataChan, err := util.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
 	util.KillPipelineIfErr(err, killChan)
@@ -29,6 +29,10 @@ func (s *SQLQueryer) Start(outputChan chan data.JSON, killChan chan error) {
 	for d := range dataChan {
 		outputChan <- d
 	}
+}
+
+// Finish - see interface for documentation.
+func (s *SQLQueryer) Finish(outputChan chan data.JSON, killChan chan error) {
 	close(outputChan)
 }
 

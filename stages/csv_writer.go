@@ -9,8 +9,8 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// CsvWriter handles converting data.JSON objects into CSV
-// format, and writing them to the given io.Writer. The Data
+// CsvWriter is handles converting data.JSON objects into CSV format,
+// and writing them to the given io.Writer. The Data
 // must be a valid JSON object or a slice of valid JSON objects.
 // If you already have Data formatted as a CSV string you can
 // use an IoWriter instead.

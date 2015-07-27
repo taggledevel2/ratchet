@@ -1,4 +1,4 @@
-package starters
+package stages
 
 import (
 	"bufio"
@@ -8,7 +8,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// IoReader is a simple stage that wraps an io.Reader.
+// IoReader is an initial PipelineStage simple stage that wraps an io.Reader.
 // For reading files, it's better to use the FileReader.
 type IoReader struct {
 	Reader     io.Reader
@@ -21,13 +21,17 @@ func NewIoReader(reader io.Reader) *IoReader {
 	return &IoReader{Reader: reader, LineByLine: true, BufferSize: 1024}
 }
 
-// Start - see interface in stages.go for documentation.
-func (r *IoReader) Start(outputChan chan data.JSON, killChan chan error) {
+// HandleData - see interface for documentation.
+func (r *IoReader) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	if r.LineByLine {
 		r.scanLines(outputChan, killChan)
 	} else {
 		r.bufferedRead(outputChan, killChan)
 	}
+}
+
+// Finish - see interface for documentation.
+func (r *IoReader) Finish(outputChan chan data.JSON, killChan chan error) {
 	close(outputChan)
 }
 

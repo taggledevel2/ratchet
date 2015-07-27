@@ -1,4 +1,4 @@
-package starters
+package stages
 
 import (
 	"io/ioutil"
@@ -7,8 +7,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// FileReader is a simple stage that wraps an io.Reader.
-// For reading files, it's better to use the FileReader.
+// FileReader is an initial PipelineStage that reads the given file.
 type FileReader struct {
 	filename string
 }
@@ -20,11 +19,15 @@ func NewFileReader(filename string) *FileReader {
 	return &FileReader{filename: filename}
 }
 
-// Start - see interface in stages.go for documentation.
-func (r *FileReader) Start(outputChan chan data.JSON, killChan chan error) {
+// HandleData - see interface for documentation.
+func (r *FileReader) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	d, err := ioutil.ReadFile(r.filename)
 	util.KillPipelineIfErr(err, killChan)
 	outputChan <- d
+}
+
+// Finish - see interface for documentation.
+func (r *FileReader) Finish(outputChan chan data.JSON, killChan chan error) {
 	close(outputChan)
 }
 
