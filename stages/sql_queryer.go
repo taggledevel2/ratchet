@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/logger"
 	"github.com/DailyBurn/ratchet/util"
 )
 
@@ -22,6 +23,7 @@ func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
 
 // ProcessData - see interface for documentation.
 func (s *SQLQueryer) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+	logger.Debug("SQLQueryer: Running - ", s.query)
 	// See sql.go
 	dataChan, err := util.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
 	util.KillPipelineIfErr(err, killChan)
