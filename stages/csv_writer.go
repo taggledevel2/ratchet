@@ -9,24 +9,24 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// CsvWriter is handles converting data.JSON objects into CSV format,
+// CSVWriter is handles converting data.JSON objects into CSV format,
 // and writing them to the given io.Writer. The Data
 // must be a valid JSON object or a slice of valid JSON objects.
 // If you already have Data formatted as a CSV string you can
 // use an IoWriter instead.
-type CsvWriter struct {
+type CSVWriter struct {
 	writer        *csv.Writer
 	WriteHeader   bool
 	headerWritten bool
 }
 
-// NewCsvWriter returns a new CsvWriter wrapping the given io.Writer object
-func NewCsvWriter(w io.Writer) *CsvWriter {
-	return &CsvWriter{writer: csv.NewWriter(w), WriteHeader: true, headerWritten: false}
+// NewCSVWriter returns a new CSVWriter wrapping the given io.Writer object
+func NewCSVWriter(w io.Writer) *CSVWriter {
+	return &CSVWriter{writer: csv.NewWriter(w), WriteHeader: true, headerWritten: false}
 }
 
 // ProcessData - see interface in stages.go for documentation.
-func (w *CsvWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	// use util helper to convert Data into []map[string]interface{}
 	objects, err := data.ObjectsFromJSON(d)
 	util.KillPipelineIfErr(err, killChan)
@@ -54,12 +54,12 @@ func (w *CsvWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 }
 
 // Finish - see interface for documentation.
-func (w *CsvWriter) Finish(outputChan chan data.JSON, killChan chan error) {
+func (w *CSVWriter) Finish(outputChan chan data.JSON, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)
 	}
 }
 
-func (w *CsvWriter) String() string {
-	return "CsvWriter"
+func (w *CSVWriter) String() string {
+	return "CSVWriter"
 }
