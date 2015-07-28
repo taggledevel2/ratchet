@@ -20,8 +20,8 @@ func NewIoWriter(writer io.Writer) *IoWriter {
 	return &IoWriter{Writer: writer}
 }
 
-// HandleData - see interface for documentation.
-func (w *IoWriter) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+// ProcessData - see interface for documentation.
+func (w *IoWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	bytesWritten, err := w.Writer.Write(d)
 	util.KillPipelineIfErr(err, killChan)
 	logger.Debug("IoWriter:", bytesWritten, "bytes written")

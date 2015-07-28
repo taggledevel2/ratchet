@@ -21,8 +21,8 @@ func NewIoReader(reader io.Reader) *IoReader {
 	return &IoReader{Reader: reader, LineByLine: true, BufferSize: 1024}
 }
 
-// HandleData - see interface for documentation.
-func (r *IoReader) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+// ProcessData - see interface for documentation.
+func (r *IoReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	if r.LineByLine {
 		r.scanLines(outputChan, killChan)
 	} else {

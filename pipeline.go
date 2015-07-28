@@ -10,7 +10,8 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// StartSignal is what's sent to a starting PipelineStage.
+// StartSignal is what's sent to a starting PipelineStage's ProcessData.
+// Typically this value will be ignored.
 var StartSignal = "GO"
 
 // Pipeline is the main construct used for running a series of stages within a data pipeline.
@@ -61,7 +62,7 @@ func NewBranchingPipeline(stageSlices ...[]PipelineStage) *Pipeline {
 
 // Run should be called on a Pipeline object to kick things off. It will setup the
 // data channels and connect them between each stage. After calling Run(), the
-// starting PipelineStage instances will receive a single HandleData function call where
+// starting PipelineStage instances will receive a single ProcessData function call where
 // the data payload is StartSignal.
 //
 // Run will return a killChan that should be waited on so your main function doesn't
@@ -84,12 +85,9 @@ func (p *Pipeline) Run() (killChan chan error) {
 	// Example:
 	//	Pipeline: |StarterStage| dataChan0-> |Stage0| dataChan1-> |Stage1| -> killChan
 
-	dataChans := make([]chan data.JSON, len(p.Stages)-1)
-	for i := range dataChans {
-		dataChans[i] = make(chan data.JSON)
-	}
-	logger.Debug("Pipeline: data channels", dataChans)
+	dataChans := initDataChans(len(p.Stages) - 1)
 	killChan = make(chan error)
+	logger.Debug("Pipeline: data channels", dataChans)
 
 	p.setupStages(killChan, dataChans)
 
@@ -121,12 +119,9 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 		if len(stages) > 1 {
 			// Setup branching and merging
 			inputs := branchChans(inputChan, len(stages))
-			// no merging need for final stage
+			// no merging needed for final stage
 			if outputChan != nil {
-				outputs := make([]chan data.JSON, len(stages))
-				for i := range outputs {
-					outputs[i] = make(chan data.JSON)
-				}
+				outputs := initDataChans(len(stages))
 				mergeChans(outputs, outputChan)
 				for i, s := range stages {
 					// Each stage runs in it's own goroutine
@@ -155,7 +150,7 @@ func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputC
 	logger.Debug("Pipeline: Stage", stage, "waiting for data on chan", inputChan)
 	for d := range inputChan {
 		logger.Debug("Pipeline: Stage", stage, "receiving data:", string(d))
-		stage.HandleData(d, outputChan, killChan)
+		stage.ProcessData(d, outputChan, killChan)
 	}
 	logger.Debug("Pipeline: Stage", stage, "finishing...")
 	stage.Finish(outputChan, killChan)
@@ -168,10 +163,7 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 	// Setup the Starter stage and kick off the pipeline execution
 	// The Starter also runs in it's own goroutine
 	if len(startingStages) > 1 {
-		outputs := make([]chan data.JSON, len(startingStages))
-		for i := range outputs {
-			outputs[i] = make(chan data.JSON)
-		}
+		outputs := initDataChans(len(startingStages))
 		mergeChans(outputs, outputChan)
 		for i, s := range startingStages {
 			// Each stage runs in it's own goroutine
@@ -188,7 +180,7 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 
 func (p *Pipeline) processStartingStage(startingStage PipelineStage, killChan chan error, outputChan chan data.JSON) {
 	logger.Debug("Pipeline: Starting", startingStage)
-	startingStage.HandleData([]byte(StartSignal), outputChan, killChan)
+	startingStage.ProcessData([]byte(StartSignal), outputChan, killChan)
 	startingStage.Finish(outputChan, killChan)
 	p.wg.Done()
 }
@@ -221,11 +213,7 @@ func mergeChans(inputs []chan data.JSON, output chan data.JSON) {
 }
 
 func branchChans(input chan data.JSON, numCopies int) []chan data.JSON {
-	outputs := make([]chan data.JSON, numCopies)
-	for i := range outputs {
-		outputs[i] = make(chan data.JSON)
-	}
-
+	outputs := initDataChans(numCopies)
 	logger.Debug("pipeline: branching channel", input, "into channels", outputs)
 
 	// Receive all data from input, sending the data receieved
@@ -233,7 +221,11 @@ func branchChans(input chan data.JSON, numCopies int) []chan data.JSON {
 	go func() {
 		for d := range input {
 			for _, out := range outputs {
-				out <- d
+				// Make a copy to ensure concurrent stages
+				// can alter data as needed.
+				dc := make(data.JSON, len(d))
+				copy(dc, d)
+				out <- dc
 			}
 		}
 		// Once all data is received from input, also close all the outputs
@@ -243,4 +235,12 @@ func branchChans(input chan data.JSON, numCopies int) []chan data.JSON {
 	}()
 
 	return outputs
+}
+
+func initDataChans(length int) []chan data.JSON {
+	cs := make([]chan data.JSON, length)
+	for i := range cs {
+		cs[i] = make(chan data.JSON)
+	}
+	return cs
 }

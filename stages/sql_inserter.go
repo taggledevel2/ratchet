@@ -27,8 +27,8 @@ func NewSQLInserter(db *sql.DB, tableName string) *SQLInserter {
 	return &SQLInserter{db: db, TableName: tableName, OnDupKeyUpdate: true}
 }
 
-// HandleData - see interface in stages.go for documentation.
-func (s *SQLInserter) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+// ProcessData - see interface in stages.go for documentation.
+func (s *SQLInserter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	err := util.SQLInsertData(s.db, d, s.TableName, s.OnDupKeyUpdate)
 	util.KillPipelineIfErr(err, killChan)
 }

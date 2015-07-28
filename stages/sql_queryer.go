@@ -20,8 +20,8 @@ func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
 	return &SQLQueryer{db: dbConn, query: sql, BatchSize: 100}
 }
 
-// HandleData - see interface for documentation.
-func (s *SQLQueryer) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+// ProcessData - see interface for documentation.
+func (s *SQLQueryer) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	// See sql.go
 	dataChan, err := util.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
 	util.KillPipelineIfErr(err, killChan)

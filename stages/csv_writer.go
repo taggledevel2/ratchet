@@ -25,8 +25,8 @@ func NewCsvWriter(w io.Writer) *CsvWriter {
 	return &CsvWriter{writer: csv.NewWriter(w), WriteHeader: true, headerWritten: false}
 }
 
-// HandleData - see interface in stages.go for documentation.
-func (w *CsvWriter) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+// ProcessData - see interface in stages.go for documentation.
+func (w *CsvWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	// use util helper to convert Data into []map[string]interface{}
 	objects, err := data.ObjectsFromJSON(d)
 	util.KillPipelineIfErr(err, killChan)

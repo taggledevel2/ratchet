@@ -19,8 +19,8 @@ func NewFileReader(filename string) *FileReader {
 	return &FileReader{filename: filename}
 }
 
-// HandleData - see interface for documentation.
-func (r *FileReader) HandleData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+// ProcessData - see interface for documentation.
+func (r *FileReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	d, err := ioutil.ReadFile(r.filename)
 	util.KillPipelineIfErr(err, killChan)
 	outputChan <- d
