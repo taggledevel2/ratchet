@@ -17,23 +17,21 @@ import (
 // where the keys are column names and the
 // the values are SQL values to be inserted into those columns.
 type SQLWriter struct {
-	db             *sql.DB
+	writeDB        *sql.DB
 	TableName      string
 	OnDupKeyUpdate bool
 }
 
 // NewSQLWriter returns a new SQLWriter
 func NewSQLWriter(db *sql.DB, tableName string) *SQLWriter {
-	return &SQLWriter{db: db, TableName: tableName, OnDupKeyUpdate: true}
+	return &SQLWriter{writeDB: db, TableName: tableName, OnDupKeyUpdate: true}
 }
 
-// ProcessData - see interface in stages.go for documentation.
 func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	err := util.SQLInsertData(s.db, d, s.TableName, s.OnDupKeyUpdate)
+	err := util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
 	util.KillPipelineIfErr(err, killChan)
 }
 
-// Finish - see interface for documentation.
 func (s *SQLWriter) Finish(outputChan chan data.JSON, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)

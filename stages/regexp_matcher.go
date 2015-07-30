@@ -23,7 +23,6 @@ func NewRegexpMatcher(pattern string) *RegexpMatcher {
 	return &RegexpMatcher{pattern, false}
 }
 
-// ProcessData - see interface for documentation.
 func (r *RegexpMatcher) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	matches, err := regexp.Match(r.pattern, d)
 	util.KillPipelineIfErr(err, killChan)
@@ -35,7 +34,6 @@ func (r *RegexpMatcher) ProcessData(d data.JSON, outputChan chan data.JSON, kill
 	}
 }
 
-// Finish - see interface for documentation.
 func (r *RegexpMatcher) Finish(outputChan chan data.JSON, killChan chan error) {
 	close(outputChan)
 }

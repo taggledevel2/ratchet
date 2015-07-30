@@ -22,7 +22,6 @@ func NewIoWriter(writer io.Writer) *IoWriter {
 	return &IoWriter{Writer: writer, AddNewline: false}
 }
 
-// ProcessData - see interface for documentation.
 func (w *IoWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	var bytesWritten int
 	var err error
@@ -35,7 +34,6 @@ func (w *IoWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan 
 	logger.Debug("IoWriter:", bytesWritten, "bytes written")
 }
 
-// Finish - see interface for documentation.
 func (w *IoWriter) Finish(outputChan chan data.JSON, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)

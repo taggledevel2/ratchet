@@ -26,7 +26,6 @@ func NewCSVTransformer() *CSVTransformer {
 	return &CSVTransformer{WriteHeader: true, headerWritten: false}
 }
 
-// ProcessData - see interface in stages.go for documentation.
 func (w *CSVTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	// use util helper to convert Data into []map[string]interface{}
 	objects, err := data.ObjectsFromJSON(d)
@@ -59,7 +58,6 @@ func (w *CSVTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 	outputChan <- []byte(b.String())
 }
 
-// Finish - see interface for documentation.
 func (w *CSVTransformer) Finish(outputChan chan data.JSON, killChan chan error) {
 	if outputChan != nil {
 		close(outputChan)
