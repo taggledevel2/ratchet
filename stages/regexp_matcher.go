@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/logger"
 	"github.com/DailyBurn/ratchet/util"
 )
 
@@ -12,18 +13,23 @@ import (
 // It is using regexp.Match under the covers: https://golang.org/pkg/regexp/#Match
 type RegexpMatcher struct {
 	pattern string
+	// Set to true to log each match attempt (logger must be in debug mode).
+	DebugLog bool
 }
 
 // NewRegexpMatcher returns a new RegexpMatcher initialized
 // with the given pattern to match.
 func NewRegexpMatcher(pattern string) *RegexpMatcher {
-	return &RegexpMatcher{pattern}
+	return &RegexpMatcher{pattern, false}
 }
 
 // ProcessData - see interface for documentation.
 func (r *RegexpMatcher) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	matches, err := regexp.Match(r.pattern, d)
 	util.KillPipelineIfErr(err, killChan)
+	if r.DebugLog {
+		logger.Debug("RegexpMatcher: checking if", string(d), "matches pattern", r.pattern, ". MATCH=", matches)
+	}
 	if matches {
 		outputChan <- d
 	}

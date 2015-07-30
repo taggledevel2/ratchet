@@ -38,7 +38,7 @@ func (r *IoReader) Finish(outputChan chan data.JSON, killChan chan error) {
 func (r *IoReader) scanLines(outputChan chan data.JSON, killChan chan error) {
 	scanner := bufio.NewScanner(r.Reader)
 	for scanner.Scan() {
-		outputChan <- scanner.Bytes()
+		outputChan <- []byte(scanner.Text())
 	}
 	err := scanner.Err()
 	util.KillPipelineIfErr(err, killChan)

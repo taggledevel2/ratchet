@@ -13,8 +13,8 @@ type FileReader struct {
 }
 
 // NewFileReader returns a new FileReader that will read the entire contents
-// of the given file path and send it at once. For buffered reading try using
-// IoReader.
+// of the given file path and send it at once. For buffered or line-by-line
+// reading try using IoReader.
 func NewFileReader(filename string) *FileReader {
 	return &FileReader{filename: filename}
 }

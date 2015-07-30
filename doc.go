@@ -26,11 +26,6 @@ processing on that data, and the third stage branches into 2 stages, one
 writing the resulting data to a CSV file, and the other inserting into another
 SQL database.
 
-Note that all data payloads sent between stages are of type JSON. By convention,
-Ratchet expects valid JSON to be what is passed it's data channels. It's worth
-noting that JSON is actually represented as []byte though, and it is sometimes
-useful to ignore the stipulation for valid JSON if your pipeline will support it.
-
 Since each stage is running in it's own goroutine, SQLReader can continue pulling and sending
 data while each subsequent stage is also processing data. Optimally-designed pipelines
 have stages that can each run in an isolated fashion, processing data without having
@@ -43,6 +38,11 @@ stages, and supporting the writing any Go code to process data, Ratchet makes
 it possible to write very custom and fast data pipeline systems. See the
 documentation for the PipelineStage interface for details on implementation
 custom stages.
+
+All data payloads sent between stages are of type JSON. By convention,
+Ratchet expects valid JSON to be what is sent on data channels. It's worth
+noting that JSON is actually represented as []byte though, and it is sometimes
+useful to ignore the stipulation for valid JSON if your pipeline will support it.
 
 Note: Many of the concepts in Ratchet were taken from the Golang blog's post on
 pipelines (http://blog.golang.org/pipelines).

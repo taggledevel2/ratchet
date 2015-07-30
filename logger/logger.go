@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime/debug"
 )
 
 const (
@@ -14,19 +15,26 @@ const (
 	LogLevelStatus = 4
 )
 
+// Notifier is an interface for receiving log events. See the
+// RatchetNotifier variable.
+type Notifier interface {
+	RatchetNotify(lvl int, trace []byte, v ...interface{})
+}
+
+// RatchetNotifier can be set to receive log events in your external
+// implementation code. Useful for doing custom alerting, etc.
+var RatchetNotifier Notifier
+
 // LogLevel can be set to one of:
 // logger.LevelDebug, logger.LevelInfo, logger.LevelError, or logger.LevelStatus
 var LogLevel = LogLevelInfo
-
-// LogFunc can be overridden to totally customize how logging occurs.
-var LogFunc func(lvl int, v ...interface{})
 
 var defaultLogger = log.New(os.Stdout, "", log.LstdFlags)
 
 // Debug logs output when LogLevel is set to at least Debug level
 func Debug(v ...interface{}) {
-	if LogFunc != nil {
-		LogFunc(LogLevelDebug, v)
+	if RatchetNotifier != nil {
+		RatchetNotifier.RatchetNotify(LogLevelDebug, debug.Stack(), v)
 	} else {
 		logit(LogLevelDebug, v)
 	}
@@ -34,8 +42,8 @@ func Debug(v ...interface{}) {
 
 // Info logs output when LogLevel is set to at least Info level
 func Info(v ...interface{}) {
-	if LogFunc != nil {
-		LogFunc(LogLevelInfo, v)
+	if RatchetNotifier != nil {
+		RatchetNotifier.RatchetNotify(LogLevelInfo, debug.Stack(), v)
 	} else {
 		logit(LogLevelInfo, v)
 	}
@@ -43,8 +51,8 @@ func Info(v ...interface{}) {
 
 // Error logs output when LogLevel is set to at least Error level
 func Error(v ...interface{}) {
-	if LogFunc != nil {
-		LogFunc(LogLevelError, v)
+	if RatchetNotifier != nil {
+		RatchetNotifier.RatchetNotify(LogLevelError, debug.Stack(), v)
 	} else {
 		logit(LogLevelError, v)
 	}
@@ -53,8 +61,8 @@ func Error(v ...interface{}) {
 // Status logs output when LogLevel is set to at least Status level
 // Status output is high-level status events like stages starting/completing.
 func Status(v ...interface{}) {
-	if LogFunc != nil {
-		LogFunc(LogLevelStatus, v)
+	if RatchetNotifier != nil {
+		RatchetNotifier.RatchetNotify(LogLevelStatus, debug.Stack(), v)
 	} else {
 		logit(LogLevelStatus, v)
 	}
