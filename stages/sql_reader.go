@@ -8,22 +8,22 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// SQLQueryer is a starter that runs the given SQL and passes the
+// SQLReader is a starter that runs the given SQL and passes the
 // resulting Data along to the next stage.
-type SQLQueryer struct {
+type SQLReader struct {
 	db        *sql.DB
 	query     string
 	BatchSize int
 }
 
-// NewSQLQueryer returns a new SQLQueryer PipelineStarter.
-func NewSQLQueryer(dbConn *sql.DB, sql string) *SQLQueryer {
-	return &SQLQueryer{db: dbConn, query: sql, BatchSize: 100}
+// NewSQLReader returns a new SQLReader PipelineStarter.
+func NewSQLReader(dbConn *sql.DB, sql string) *SQLReader {
+	return &SQLReader{db: dbConn, query: sql, BatchSize: 100}
 }
 
 // ProcessData - see interface for documentation.
-func (s *SQLQueryer) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	logger.Debug("SQLQueryer: Running - ", s.query)
+func (s *SQLReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+	logger.Debug("SQLReader: Running - ", s.query)
 	// See sql.go
 	dataChan, err := util.GetDataFromSQLQuery(s.db, s.query, s.BatchSize)
 	util.KillPipelineIfErr(err, killChan)
@@ -34,10 +34,10 @@ func (s *SQLQueryer) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 }
 
 // Finish - see interface for documentation.
-func (s *SQLQueryer) Finish(outputChan chan data.JSON, killChan chan error) {
+func (s *SQLReader) Finish(outputChan chan data.JSON, killChan chan error) {
 	close(outputChan)
 }
 
-func (s *SQLQueryer) String() string {
-	return "SQLQueryer"
+func (s *SQLReader) String() string {
+	return "SQLReader"
 }
