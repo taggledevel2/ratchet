@@ -8,8 +8,8 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// IoReader is an initial PipelineStage simple stage that wraps an io.Reader.
-// For reading files, it's better to use the FileReader.
+// IoReader is a simple pipeline stage that wraps an io.Reader.
+// It will typically be used as a starting stage in a pipeline.
 type IoReader struct {
 	Reader     io.Reader
 	LineByLine bool // defaults to true
@@ -22,27 +22,33 @@ func NewIoReader(reader io.Reader) *IoReader {
 }
 
 func (r *IoReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	if r.LineByLine {
-		r.scanLines(outputChan, killChan)
-	} else {
-		r.bufferedRead(outputChan, killChan)
-	}
+	r.ForEachData(killChan, func(d data.JSON) {
+		outputChan <- d
+	})
 }
 
 func (r *IoReader) Finish(outputChan chan data.JSON, killChan chan error) {
 	close(outputChan)
 }
 
-func (r *IoReader) scanLines(outputChan chan data.JSON, killChan chan error) {
+func (r *IoReader) ForEachData(killChan chan error, foo func(d data.JSON)) {
+	if r.LineByLine {
+		r.scanLines(killChan, foo)
+	} else {
+		r.bufferedRead(killChan, foo)
+	}
+}
+
+func (r *IoReader) scanLines(killChan chan error, forEach func(d data.JSON)) {
 	scanner := bufio.NewScanner(r.Reader)
 	for scanner.Scan() {
-		outputChan <- []byte(scanner.Text())
+		forEach(data.JSON(scanner.Text()))
 	}
 	err := scanner.Err()
 	util.KillPipelineIfErr(err, killChan)
 }
 
-func (r *IoReader) bufferedRead(outputChan chan data.JSON, killChan chan error) {
+func (r *IoReader) bufferedRead(killChan chan error, forEach func(d data.JSON)) {
 	reader := bufio.NewReader(r.Reader)
 	d := make([]byte, r.BufferSize)
 	for {
@@ -53,7 +59,7 @@ func (r *IoReader) bufferedRead(outputChan chan data.JSON, killChan chan error) 
 		if n == 0 {
 			break
 		}
-		outputChan <- d
+		forEach(d)
 	}
 }
 
