@@ -30,6 +30,7 @@ func ExampleNewBranchingPipeline() {
 	hola := stages.NewIoReader(strings.NewReader("Hola mundo"))
 	bonjour := stages.NewIoReader(strings.NewReader("Bonjour monde"))
 	stdout := stages.NewIoWriter(os.Stdout)
+	stdout.AddNewline = true
 
 	stage1 := []ratchet.PipelineStage{hello, hola, bonjour}
 	stage2 := []ratchet.PipelineStage{stdout}
