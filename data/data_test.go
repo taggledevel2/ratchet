@@ -30,11 +30,24 @@ func ExampleParseJSON() {
 }
 
 func ExampleObjectsFromJSON() {
-	d := []byte(`[{"One":1, "Two":2},
-		      {"Three":3, "Four":4}]`)
+	d := []byte(`[{"One":1},
+		      {"Two":2}]`)
 
 	objects, _ := data.ObjectsFromJSON(d)
 
 	fmt.Println(fmt.Sprintf("%+v", objects))
-	// Output: [map[One:1 Two:2] map[Three:3 Four:4]]
+	// Output: [map[One:1] map[Two:2]]
+}
+
+func ExampleJSONFromHeaderAndRows() {
+	header := []string{"A", "B", "C"}
+	rows := [][]interface{}{
+		[]interface{}{1, 2, 3},
+		[]interface{}{4, 5, 6},
+	}
+
+	d := data.JSONFromHeaderAndRows(header, rows)
+
+	fmt.Println(fmt.Sprintf("%+v", string(d)))
+	// Output: [{"A":1,"B":2,"C":3},{"A":4,"B":5,"C":6}]
 }

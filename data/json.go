@@ -66,3 +66,32 @@ func ObjectsFromJSON(d JSON) ([]map[string]interface{}, error) {
 
 	return objects, nil
 }
+
+// JSONFromHeaderAndRows takes the given header and rows of values, and
+// turns it into a JSON array of objects.
+func JSONFromHeaderAndRows(header []string, rows [][]interface{}) JSON {
+	// There may be a better way to do this?
+	jsonStr := "["
+	for i, row := range rows {
+		if i > 0 {
+			jsonStr += ","
+		}
+		jsonStr += "{"
+		for j, v := range row {
+			if j > 0 {
+				jsonStr += ","
+			}
+			// type check for string to see if it needs quotes
+			switch vv := v.(type) {
+			case string:
+				jsonStr += fmt.Sprintf("\"%v\":\"%v\"", header[j], vv)
+			default:
+				jsonStr += fmt.Sprintf("\"%v\":%v", header[j], vv)
+			}
+		}
+		jsonStr += "}"
+	}
+	jsonStr += "]"
+
+	return JSON(jsonStr)
+}
