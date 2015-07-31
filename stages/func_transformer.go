@@ -8,16 +8,16 @@ import "github.com/DailyBurn/ratchet/data"
 // While FuncTransformer is useful for simple data transformation, more
 // complicated tasks justify building a custom implementation of PipelineStage.
 type FuncTransformer struct {
-	foo  func(d data.JSON) data.JSON
-	Name string // can be set for more useful log output
+	transform func(d data.JSON) data.JSON
+	Name      string // can be set for more useful log output
 }
 
-func NewFuncTransformer(foo func(d data.JSON) data.JSON) *FuncTransformer {
-	return &FuncTransformer{foo: foo}
+func NewFuncTransformer(transform func(d data.JSON) data.JSON) *FuncTransformer {
+	return &FuncTransformer{transform: transform}
 }
 
 func (t *FuncTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	outputChan <- t.foo(d)
+	outputChan <- t.transform(d)
 }
 
 func (t *FuncTransformer) Finish(outputChan chan data.JSON, killChan chan error) {

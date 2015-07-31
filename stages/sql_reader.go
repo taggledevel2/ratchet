@@ -22,7 +22,7 @@ import (
 type SQLReader struct {
 	readDB       *sql.DB
 	query        string
-	sqlGenerator func(data.JSON) string
+	sqlGenerator func(data.JSON) (string, error)
 	BatchSize    int
 }
 
@@ -32,7 +32,7 @@ func NewSQLReader(dbConn *sql.DB, sql string) *SQLReader {
 }
 
 // NewDynamicSQLReader returns a new SQLReader operating in dynamic mode.
-func NewDynamicSQLReader(dbConn *sql.DB, sqlGenerator func(data.JSON) string) *SQLReader {
+func NewDynamicSQLReader(dbConn *sql.DB, sqlGenerator func(data.JSON) (string, error)) *SQLReader {
 	return &SQLReader{readDB: dbConn, sqlGenerator: sqlGenerator, BatchSize: 100}
 }
 
@@ -45,11 +45,13 @@ func (s *SQLReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 
 // ForEachQueryData handles generating the SQL (in case of dynamic mode),
 // running the query and retrieving the data in data.JSON format, and then
-// passing the results back witih the function call to foo.
-func (s *SQLReader) ForEachQueryData(d data.JSON, killChan chan error, foo func(d data.JSON)) {
+// passing the results back witih the function call to forEach.
+func (s *SQLReader) ForEachQueryData(d data.JSON, killChan chan error, forEach func(d data.JSON)) {
 	sql := ""
+	var err error
 	if s.query == "" && s.sqlGenerator != nil {
-		sql = s.sqlGenerator(d)
+		sql, err = s.sqlGenerator(d)
+		util.KillPipelineIfErr(err, killChan)
 	} else if s.query != "" {
 		sql = s.query
 	} else {
@@ -62,7 +64,7 @@ func (s *SQLReader) ForEachQueryData(d data.JSON, killChan chan error, foo func(
 	util.KillPipelineIfErr(err, killChan)
 
 	for d := range dataChan {
-		foo(d)
+		forEach(d)
 	}
 }
 
