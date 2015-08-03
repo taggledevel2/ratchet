@@ -16,10 +16,23 @@ import (
 // (or a slice of valid objects all with the same keys),
 // where the keys are column names and the
 // the values are SQL values to be inserted into those columns.
+//
+// For use-cases where a SQLWriter instance needs to write to
+// multiple tables (e.g., when the preceding stage is building 2+
+// separate data sets), you can pass in SQLWriterData.
 type SQLWriter struct {
 	writeDB        *sql.DB
 	TableName      string
 	OnDupKeyUpdate bool
+}
+
+// SQLWriterData is a custom data structure you can send into a SQLWriter
+// stage if you need to specify TableName on a per-data payload basis. No
+// extra configuration is needed to use SQLWriterData, each data payload
+// received is first checked for this structure before processing.
+type SQLWriterData struct {
+	TableName  string
+	InsertData data.JSON
 }
 
 // NewSQLWriter returns a new SQLWriter
@@ -28,8 +41,18 @@ func NewSQLWriter(db *sql.DB, tableName string) *SQLWriter {
 }
 
 func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	err := util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
-	util.KillPipelineIfErr(err, killChan)
+	// First check for SQLWriterData
+	wd := SQLWriterData{}
+	err := data.ParseJSONSilent(d, &wd)
+	if err != nil {
+		// Normal data scenario
+		err = util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
+		util.KillPipelineIfErr(err, killChan)
+	} else {
+		// SQLWriterData scenario
+		err = util.SQLInsertData(s.writeDB, wd.InsertData, wd.TableName, s.OnDupKeyUpdate)
+		util.KillPipelineIfErr(err, killChan)
+	}
 }
 
 func (s *SQLWriter) Finish(outputChan chan data.JSON, killChan chan error) {

@@ -38,6 +38,12 @@ func ParseJSON(d JSON, v interface{}) error {
 	return err
 }
 
+// ParseJSONSilent won't log output when unmarshaling fails.
+// It can be used in cases where failure is expected.
+func ParseJSONSilent(d JSON, v interface{}) error {
+	return json.Unmarshal(d, v)
+}
+
 // ObjectsFromJSON is a helper for parsing a JSON into a slice of
 // generic maps/objects. The use-case is when a stage is expecting
 // to receive either a JSON object or an array of JSON objects, and
