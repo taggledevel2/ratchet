@@ -20,10 +20,15 @@ import (
 // function to NewDynamicSQLReader. This allows you to write whatever code is
 // needed to generate SQL based upon data flowing through the pipeline.
 type SQLReader struct {
-	readDB       *sql.DB
-	query        string
-	sqlGenerator func(data.JSON) (string, error)
-	BatchSize    int
+	readDB            *sql.DB
+	query             string
+	sqlGenerator      func(data.JSON) (string, error)
+	BatchSize         int
+	StructDestination interface{}
+}
+
+type dataErr struct {
+	Error string
 }
 
 // NewSQLReader returns a new SQLReader operating in static mode.
@@ -60,11 +65,18 @@ func (s *SQLReader) ForEachQueryData(d data.JSON, killChan chan error, forEach f
 
 	logger.Debug("SQLReader: Running - ", sql)
 	// See sql.go
-	dataChan, err := util.GetDataFromSQLQuery(s.readDB, sql, s.BatchSize)
+	dataChan, err := util.GetDataFromSQLQuery(s.readDB, sql, s.BatchSize, s.StructDestination)
 	util.KillPipelineIfErr(err, killChan)
 
 	for d := range dataChan {
-		forEach(d)
+		// First check if an error was returned back from the SQL processing
+		// helper, then if not call forEach with the received data.
+		var derr dataErr
+		if err := data.ParseJSONSilent(d, &derr); err == nil {
+			util.KillPipelineIfErr(errors.New(derr.Error), killChan)
+		} else {
+			forEach(d)
+		}
 	}
 }
 

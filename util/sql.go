@@ -3,11 +3,13 @@ package util
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/DailyBurn/ratchet/data"
 	"github.com/DailyBurn/ratchet/logger"
+	"github.com/kisielk/sqlstruct"
 )
 
 // GetDataFromSQLQuery is a util function that, given a properly intialized sql.DB
@@ -17,8 +19,13 @@ import (
 // returned immediately. It is also possible for errors to occur during execution as data
 // is retrieved from the query. If this happens, the object returned will be a JSON
 // object in the form of {"Error": "description"}.
-func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan data.JSON, error) {
-	rows, err := db.Query(query)
+func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int, structDest interface{}) (chan data.JSON, error) {
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.Query()
 	if err != nil {
 		return nil, err
 	}
@@ -30,59 +37,106 @@ func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan data.JSO
 
 	dataChan := make(chan data.JSON)
 
+	if structDest != nil {
+		go scanRowsUsingStruct(rows, columns, structDest, batchSize, dataChan)
+	} else {
+		go scanDataGeneric(rows, columns, batchSize, dataChan)
+	}
+
 	go func(rows *sql.Rows, columns []string) {
-		defer rows.Close()
 
-		tableData := []map[string]interface{}{}
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
-		for i := 0; i < len(columns); i++ {
-			valuePtrs[i] = &values[i]
-		}
-
-		for rows.Next() {
-			err := rows.Scan(valuePtrs...)
-			if err != nil {
-				sendErr(err, dataChan)
-			}
-
-			entry := make(map[string]interface{})
-			for i, col := range columns {
-				var v interface{}
-				val := values[i]
-				switch vv := val.(type) {
-				case []byte:
-					v, err = determineBytesValue(vv)
-					if err != nil {
-						sendErr(err, dataChan)
-					}
-				case nil:
-					v = nil
-				default:
-					v = vv
-				}
-				entry[col] = v
-			}
-			tableData = append(tableData, entry)
-
-			if batchSize > 0 && len(tableData) >= batchSize {
-				sendTableData(tableData, dataChan)
-				tableData = []map[string]interface{}{}
-			}
-		}
-		if rows.Err() != nil {
-			sendErr(rows.Err(), dataChan)
-		}
-
-		// Flush remaining tableData
-		if len(tableData) > 0 {
-			sendTableData(tableData, dataChan)
-		}
-
-		close(dataChan) // signal completion to caller
 	}(rows, columns)
 
 	return dataChan, nil
+}
+
+func scanRowsUsingStruct(rows *sql.Rows, columns []string, structDest interface{}, batchSize int, dataChan chan data.JSON) {
+	defer rows.Close()
+
+	tableData := []map[string]interface{}{}
+
+	for rows.Next() {
+		err := sqlstruct.Scan(structDest, rows)
+		if err != nil {
+			sendErr(err, dataChan)
+		}
+
+		d, err := data.NewJSON(structDest)
+		if err != nil {
+			sendErr(err, dataChan)
+		}
+
+		entry := make(map[string]interface{})
+		err = data.ParseJSON(d, &entry)
+		if err != nil {
+			sendErr(err, dataChan)
+		}
+
+		tableData = append(tableData, entry)
+
+		if batchSize > 0 && len(tableData) >= batchSize {
+			sendTableData(tableData, dataChan)
+			tableData = []map[string]interface{}{}
+		}
+	}
+	if rows.Err() != nil {
+		sendErr(rows.Err(), dataChan)
+	}
+
+	// Flush remaining tableData
+	if len(tableData) > 0 {
+		sendTableData(tableData, dataChan)
+	}
+
+	close(dataChan) // signal completion to caller
+}
+
+func scanDataGeneric(rows *sql.Rows, columns []string, batchSize int, dataChan chan data.JSON) {
+	defer rows.Close()
+
+	tableData := []map[string]interface{}{}
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+	for i := 0; i < len(columns); i++ {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err := rows.Scan(valuePtrs...)
+		if err != nil {
+			sendErr(err, dataChan)
+		}
+
+		entry := make(map[string]interface{})
+		for i, col := range columns {
+			var v interface{}
+			val := values[i]
+			logger.Debug("Value Type for", col, " -> ", reflect.TypeOf(val))
+			switch vv := val.(type) {
+			case []byte:
+				v = string(vv)
+			default:
+				v = vv
+			}
+			entry[col] = v
+		}
+		tableData = append(tableData, entry)
+
+		if batchSize > 0 && len(tableData) >= batchSize {
+			sendTableData(tableData, dataChan)
+			tableData = []map[string]interface{}{}
+		}
+	}
+	if rows.Err() != nil {
+		sendErr(rows.Err(), dataChan)
+	}
+
+	// Flush remaining tableData
+	if len(tableData) > 0 {
+		sendTableData(tableData, dataChan)
+	}
+
+	close(dataChan) // signal completion to caller
 }
 
 // http://play.golang.org/p/2wHfO6YS3_
