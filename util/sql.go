@@ -36,21 +36,30 @@ func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan data.JSO
 		tableData := []map[string]interface{}{}
 		values := make([]interface{}, len(columns))
 		valuePtrs := make([]interface{}, len(columns))
+		for i := 0; i < len(columns); i++ {
+			valuePtrs[i] = &values[i]
+		}
 
 		for rows.Next() {
-			for i := 0; i < len(columns); i++ {
-				valuePtrs[i] = &values[i]
+			err := rows.Scan(valuePtrs...)
+			if err != nil {
+				sendErr(err, dataChan)
 			}
-			rows.Scan(valuePtrs...)
+
 			entry := make(map[string]interface{})
 			for i, col := range columns {
 				var v interface{}
 				val := values[i]
-				b, ok := val.([]byte)
-				if ok {
-					v = string(b)
-				} else {
-					v = val
+				switch vv := val.(type) {
+				case []byte:
+					v, err = determineBytesValue(vv)
+					if err != nil {
+						sendErr(err, dataChan)
+					}
+				case nil:
+					v = nil
+				default:
+					v = vv
 				}
 				entry[col] = v
 			}
@@ -74,6 +83,25 @@ func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int) (chan data.JSO
 	}(rows, columns)
 
 	return dataChan, nil
+}
+
+// http://play.golang.org/p/2wHfO6YS3_
+func determineBytesValue(b []byte) (interface{}, error) {
+	var v interface{}
+	err := data.ParseJSONSilent(b, &v)
+	if err != nil {
+		// need to quote strings for JSON to parse correctly
+		if !strings.Contains(string(b), `"`) {
+			b = []byte(fmt.Sprintf(`"%v"`, string(b)))
+			return determineBytesValue(b)
+		}
+	}
+	switch vv := v.(type) {
+	case []byte:
+		return string(vv), err
+	default:
+		return v, err
+	}
 }
 
 func sendTableData(tableData []map[string]interface{}, dataChan chan data.JSON) {

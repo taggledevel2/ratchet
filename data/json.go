@@ -6,7 +6,6 @@ package data
 import (
 	"encoding/json"
 	"fmt"
-	"runtime/debug"
 
 	"github.com/DailyBurn/ratchet/logger"
 )
@@ -22,7 +21,7 @@ func NewJSON(v interface{}) (JSON, error) {
 	d, err := json.Marshal(v)
 	if err != nil {
 		logger.Error(fmt.Sprintf("data: failure to marshal JSON %+v - error is \"%v\"", v, err.Error()))
-		logger.Debug(string(debug.Stack()))
+		logger.Debug(fmt.Sprintf("	Failed val: %+v", v))
 	}
 	return d, err
 }
@@ -33,7 +32,6 @@ func ParseJSON(d JSON, v interface{}) error {
 	if err != nil {
 		logger.Error(fmt.Sprintf("data: failure to unmarshal JSON into %+v - error is \"%v\"", v, err.Error()))
 		logger.Debug(fmt.Sprintf("	Failed Data: %+v", string(d)))
-		logger.Debug(string(debug.Stack()))
 	}
 	return err
 }
@@ -67,7 +65,8 @@ func ObjectsFromJSON(d JSON) ([]map[string]interface{}, error) {
 	case []map[string]interface{}:
 		objects = vv
 	default:
-		return nil, fmt.Errorf("ObjectsFromJSON: unsupported data type: %T", vv)
+		err = fmt.Errorf("ObjectsFromJSON: unsupported data type: %T", vv)
+		return nil, err
 	}
 
 	return objects, nil
@@ -75,7 +74,7 @@ func ObjectsFromJSON(d JSON) ([]map[string]interface{}, error) {
 
 // JSONFromHeaderAndRows takes the given header and rows of values, and
 // turns it into a JSON array of objects.
-func JSONFromHeaderAndRows(header []string, rows [][]interface{}) JSON {
+func JSONFromHeaderAndRows(header []string, rows [][]interface{}) (JSON, error) {
 	// There may be a better way to do this?
 	jsonStr := "["
 	for i, row := range rows {
@@ -87,17 +86,15 @@ func JSONFromHeaderAndRows(header []string, rows [][]interface{}) JSON {
 			if j > 0 {
 				jsonStr += ","
 			}
-			// type check for string to see if it needs quotes
-			switch vv := v.(type) {
-			case string:
-				jsonStr += fmt.Sprintf("\"%v\":\"%v\"", header[j], vv)
-			default:
-				jsonStr += fmt.Sprintf("\"%v\":%v", header[j], vv)
+			d, err := NewJSON(v)
+			if err != nil {
+				return nil, err
 			}
+			jsonStr += fmt.Sprintf("\"%s\":%v", header[j], string(d))
 		}
 		jsonStr += "}"
 	}
 	jsonStr += "]"
 
-	return JSON(jsonStr)
+	return JSON(jsonStr), nil
 }

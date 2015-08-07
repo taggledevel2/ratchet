@@ -41,6 +41,13 @@ func NewSQLWriter(db *sql.DB, tableName string) *SQLWriter {
 }
 
 func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+	// handle panics a bit more gracefully
+	defer func() {
+		if err := recover(); err != nil {
+			util.KillPipelineIfErr(err.(error), killChan)
+		}
+	}()
+
 	// First check for SQLWriterData
 	wd := SQLWriterData{}
 	err := data.ParseJSONSilent(d, &wd)
