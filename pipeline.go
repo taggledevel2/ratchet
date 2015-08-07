@@ -149,7 +149,8 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON) {
 	logger.Debug("Pipeline: Stage", stage, "waiting for data on chan", inputChan)
 	for d := range inputChan {
-		logger.Debug("Pipeline: Stage", stage, "receiving data:", string(d))
+		logger.Info("Pipeline: Stage", stage, "receiving data:")
+		logger.Debug(string(d))
 		stage.ProcessData(d, outputChan, killChan)
 	}
 	logger.Debug("Pipeline: Stage", stage, "finishing...")

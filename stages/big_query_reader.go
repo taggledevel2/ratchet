@@ -99,7 +99,7 @@ L:
 			logger.Debug("BigQueryReader: received data:")
 			logger.Debug("   %+v", bqData)
 
-			if bqData.Rows != nil && bqData.Headers != nil {
+			if bqData.Rows != nil && bqData.Headers != nil && len(bqData.Rows) > 0 {
 				d, err := data.JSONFromHeaderAndRows(bqData.Headers, bqData.Rows)
 				util.KillPipelineIfErr(err, killChan)
 				forEach(d) // pass back out via the forEach func
