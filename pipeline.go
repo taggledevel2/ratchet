@@ -1,7 +1,10 @@
 package ratchet
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
 	"sync"
 
@@ -89,6 +92,7 @@ func (p *Pipeline) Run() (killChan chan error) {
 	dataChans := initDataChans(len(p.Stages) - 1)
 	killChan = make(chan error)
 	logger.Debug(p.Name, ": data channels", dataChans)
+	handleInterrupt(killChan)
 
 	p.setupStages(killChan, dataChans)
 
@@ -150,7 +154,7 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON) {
 	logger.Debug(p.Name, ": Stage", stage, "waiting for data on chan", inputChan)
 	for d := range inputChan {
-		logger.Info("Pipeline: Stage", stage, "receiving data:")
+		logger.Info("Pipeline: Stage", stage, "receiving data:", len(d), "bytes")
 		logger.Debug(string(d))
 		stage.ProcessData(d, outputChan, killChan)
 	}
@@ -245,4 +249,14 @@ func initDataChans(length int) []chan data.JSON {
 		cs[i] = make(chan data.JSON)
 	}
 	return cs
+}
+
+func handleInterrupt(killChan chan error) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			killChan <- errors.New("Exiting due to interrupt signal.")
+		}
+	}()
 }
