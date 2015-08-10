@@ -3,7 +3,6 @@ package util
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -111,7 +110,7 @@ func scanDataGeneric(rows *sql.Rows, columns []string, batchSize int, dataChan c
 		for i, col := range columns {
 			var v interface{}
 			val := values[i]
-			logger.Debug("Value Type for", col, " -> ", reflect.TypeOf(val))
+			// logger.Debug("Value Type for", col, " -> ", reflect.TypeOf(val))
 			switch vv := val.(type) {
 			case []byte:
 				v = string(vv)
@@ -188,6 +187,7 @@ func SQLInsertData(db *sql.DB, d data.JSON, tableName string, onDupKeyUpdate boo
 
 func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) error {
 	insertSQL := buildInsertSQL(objects, tableName, onDupKeyUpdate)
+	logger.Debug("SQLInsertData:", insertSQL)
 
 	stmt, err := db.Prepare(insertSQL)
 	if err != nil {

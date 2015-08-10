@@ -31,8 +31,8 @@ type SQLWriter struct {
 // extra configuration is needed to use SQLWriterData, each data payload
 // received is first checked for this structure before processing.
 type SQLWriterData struct {
-	TableName  string
-	InsertData data.JSON
+	TableName  string    `json:"table_name"`
+	InsertData data.JSON `json:"insert_data"`
 }
 
 // NewSQLWriter returns a new SQLWriter

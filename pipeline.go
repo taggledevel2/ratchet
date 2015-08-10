@@ -17,6 +17,7 @@ var StartSignal = "GO"
 // Pipeline is the main construct used for running a series of stages within a data pipeline.
 type Pipeline struct {
 	Stages [][]PipelineStage
+	Name   string // Name is simply for display purpsoses in log output.
 	timer  *util.Timer
 	wg     sync.WaitGroup
 }
@@ -24,7 +25,7 @@ type Pipeline struct {
 // NewPipeline returns a new basic Pipeline given one or more stages that will
 // process data.
 func NewPipeline(stages ...PipelineStage) *Pipeline {
-	p := &Pipeline{}
+	p := &Pipeline{Name: "Pipeline"}
 	for _, s := range stages {
 		p.Stages = append(p.Stages, []PipelineStage{s})
 	}
@@ -77,7 +78,7 @@ func (p *Pipeline) Run() (killChan chan error) {
 	for _, s := range p.Stages {
 		stageNames = append(stageNames, fmt.Sprintf("%v", s))
 	}
-	logger.Status("Pipeline: running", strings.Join(stageNames, " -> "))
+	logger.Status(p.Name, ": running", strings.Join(stageNames, " -> "))
 
 	// Each stage should be connected by a separate channel object,
 	// so that when close()'d it will cut off the processing in a left
@@ -87,14 +88,14 @@ func (p *Pipeline) Run() (killChan chan error) {
 
 	dataChans := initDataChans(len(p.Stages) - 1)
 	killChan = make(chan error)
-	logger.Debug("Pipeline: data channels", dataChans)
+	logger.Debug(p.Name, ": data channels", dataChans)
 
 	p.setupStages(killChan, dataChans)
 
 	go func() {
 		p.wg.Wait()
-		logger.Status("Pipeline: Exiting pipeline.")
-		logger.Status("Pipeline:", p.timer.Stop())
+		logger.Status(p.Name, ": Exiting pipeline.")
+		logger.Status(p.Name, ":", p.timer.Stop())
 		killChan <- nil
 	}()
 
@@ -113,16 +114,16 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 			outputChan = dataChans[i+1]
 		}
 
-		logger.Debug("Pipeline: ", stages, "has inputChan", inputChan, "/ outputChan", outputChan)
+		logger.Debug(p.Name, ": ", stages, "has inputChan", inputChan, "/ outputChan", outputChan)
 
 		// Check if we're setting up a branching vs non-branching stage
 		if len(stages) > 1 {
 			// Setup branching and merging
-			inputs := branchChans(inputChan, len(stages))
+			inputs := p.branchChans(inputChan, len(stages))
 			// no merging needed for final stage
 			if outputChan != nil {
 				outputs := initDataChans(len(stages))
-				mergeChans(outputs, outputChan)
+				p.mergeChans(outputs, outputChan)
 				for i, s := range stages {
 					// Each stage runs in it's own goroutine
 					go p.processStage(s, killChan, inputs[i], outputs[i])
@@ -147,15 +148,15 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 }
 
 func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON) {
-	logger.Debug("Pipeline: Stage", stage, "waiting for data on chan", inputChan)
+	logger.Debug(p.Name, ": Stage", stage, "waiting for data on chan", inputChan)
 	for d := range inputChan {
 		logger.Info("Pipeline: Stage", stage, "receiving data:")
 		logger.Debug(string(d))
 		stage.ProcessData(d, outputChan, killChan)
 	}
-	logger.Debug("Pipeline: Stage", stage, "finishing...")
+	logger.Debug(p.Name, ": Stage", stage, "finishing...")
 	stage.Finish(outputChan, killChan)
-	logger.Info("Pipeline: Stage", stage, "finished.", p.timer)
+	logger.Info(p.Name, ": Stage", stage, "finished.", p.timer)
 	p.wg.Done()
 }
 
@@ -165,7 +166,7 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 	// The Starter also runs in it's own goroutine
 	if len(startingStages) > 1 {
 		outputs := initDataChans(len(startingStages))
-		mergeChans(outputs, outputChan)
+		p.mergeChans(outputs, outputChan)
 		for i, s := range startingStages {
 			// Each stage runs in it's own goroutine
 			go p.processStartingStage(s, killChan, outputs[i])
@@ -180,15 +181,15 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 }
 
 func (p *Pipeline) processStartingStage(startingStage PipelineStage, killChan chan error, outputChan chan data.JSON) {
-	logger.Debug("Pipeline: Starting", startingStage)
+	logger.Debug(p.Name, ": Starting", startingStage)
 	startingStage.ProcessData([]byte(StartSignal), outputChan, killChan)
 	startingStage.Finish(outputChan, killChan)
 	p.wg.Done()
 }
 
 // Reference: http://blog.golang.org/pipelines
-func mergeChans(inputs []chan data.JSON, output chan data.JSON) {
-	logger.Debug("pipeline: merging channels", inputs, "into channel", output)
+func (p *Pipeline) mergeChans(inputs []chan data.JSON, output chan data.JSON) {
+	logger.Debug(p.Name, ": merging channels", inputs, "into channel", output)
 
 	var wg sync.WaitGroup
 
@@ -213,9 +214,9 @@ func mergeChans(inputs []chan data.JSON, output chan data.JSON) {
 	}()
 }
 
-func branchChans(input chan data.JSON, numCopies int) []chan data.JSON {
+func (p *Pipeline) branchChans(input chan data.JSON, numCopies int) []chan data.JSON {
 	outputs := initDataChans(numCopies)
-	logger.Debug("pipeline: branching channel", input, "into channels", outputs)
+	logger.Debug(p.Name, ": branching channel", input, "into channels", outputs)
 
 	// Receive all data from input, sending the data receieved
 	// on to all the outputs
