@@ -4,6 +4,7 @@
 package data
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -75,26 +76,27 @@ func ObjectsFromJSON(d JSON) ([]map[string]interface{}, error) {
 // JSONFromHeaderAndRows takes the given header and rows of values, and
 // turns it into a JSON array of objects.
 func JSONFromHeaderAndRows(header []string, rows [][]interface{}) (JSON, error) {
-	// There may be a better way to do this?
-	jsonStr := "["
+	var b bytes.Buffer
+	b.Write([]byte("["))
 	for i, row := range rows {
+		fmt.Println(i, "of", len(rows))
 		if i > 0 {
-			jsonStr += ","
+			b.Write([]byte(","))
 		}
-		jsonStr += "{"
+		b.Write([]byte("{"))
 		for j, v := range row {
 			if j > 0 {
-				jsonStr += ","
+				b.Write([]byte(","))
 			}
 			d, err := NewJSON(v)
 			if err != nil {
 				return nil, err
 			}
-			jsonStr += fmt.Sprintf("\"%s\":%v", header[j], string(d))
+			b.Write([]byte(`"` + header[j] + `":` + string(d)))
 		}
-		jsonStr += "}"
+		b.Write([]byte("}"))
 	}
-	jsonStr += "]"
+	b.Write([]byte("]"))
 
-	return JSON(jsonStr), nil
+	return JSON(b.Bytes()), nil
 }
