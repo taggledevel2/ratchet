@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/logger"
 	"github.com/DailyBurn/ratchet/util"
 )
 
@@ -51,6 +52,7 @@ func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	// First check for SQLWriterData
 	wd := SQLWriterData{}
 	err := data.ParseJSONSilent(d, &wd)
+	logger.Info("SQLWriter: Writing data...")
 	if err != nil {
 		// Normal data scenario
 		err = util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
@@ -60,6 +62,7 @@ func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 		err = util.SQLInsertData(s.writeDB, wd.InsertData, wd.TableName, s.OnDupKeyUpdate)
 		util.KillPipelineIfErr(err, killChan)
 	}
+	logger.Info("SQLWriter: Write complete")
 }
 
 func (s *SQLWriter) Finish(outputChan chan data.JSON, killChan chan error) {

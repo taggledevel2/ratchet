@@ -33,12 +33,12 @@ type dataErr struct {
 
 // NewSQLReader returns a new SQLReader operating in static mode.
 func NewSQLReader(dbConn *sql.DB, sql string) *SQLReader {
-	return &SQLReader{readDB: dbConn, query: sql, BatchSize: 100}
+	return &SQLReader{readDB: dbConn, query: sql, BatchSize: 1000}
 }
 
 // NewDynamicSQLReader returns a new SQLReader operating in dynamic mode.
 func NewDynamicSQLReader(dbConn *sql.DB, sqlGenerator func(data.JSON) (string, error)) *SQLReader {
-	return &SQLReader{readDB: dbConn, sqlGenerator: sqlGenerator, BatchSize: 100}
+	return &SQLReader{readDB: dbConn, sqlGenerator: sqlGenerator, BatchSize: 1000}
 }
 
 // ProcessData - see interface for documentation.
