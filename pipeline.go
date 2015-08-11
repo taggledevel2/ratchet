@@ -19,20 +19,22 @@ var StartSignal = "GO"
 
 // Pipeline is the main construct used for running a series of stages within a data pipeline.
 type Pipeline struct {
-	Stages [][]PipelineStage
-	Name   string // Name is simply for display purpsoses in log output.
-	timer  *util.Timer
-	wg     sync.WaitGroup
+	Name        string // Name is simply for display purpsoses in log output.
+	Stages      [][]PipelineStage
+	stats       [][]*executionStats
+	RecordStats bool // RecordStats can be set to false to avoid creating extra channels and some minor overhead.
+	timer       *util.Timer
+	wg          sync.WaitGroup
 }
 
 // NewPipeline returns a new basic Pipeline given one or more stages that will
 // process data.
 func NewPipeline(stages ...PipelineStage) *Pipeline {
-	p := &Pipeline{Name: "Pipeline"}
+	stageSlices := [][]PipelineStage{}
 	for _, s := range stages {
-		p.Stages = append(p.Stages, []PipelineStage{s})
+		stageSlices = append(stageSlices, []PipelineStage{s})
 	}
-	return p
+	return NewBranchingPipeline(stageSlices...)
 }
 
 // NewBranchingPipeline creates a new Pipeline that supports branching
@@ -60,7 +62,19 @@ func NewPipeline(stages ...PipelineStage) *Pipeline {
 // (D) This last stage works similarly as the prior steps. stages5&6 both receive a copy of data sent from all of stages2-4.
 //
 func NewBranchingPipeline(stageSlices ...[]PipelineStage) *Pipeline {
-	p := &Pipeline{Stages: stageSlices}
+	p := &Pipeline{Name: "Pipeline", Stages: stageSlices, RecordStats: true}
+
+	// setup stats to match the stages
+	p.stats = make([][]*executionStats, len(stageSlices))
+	for i, ss := range stageSlices {
+		if p.stats[i] == nil {
+			p.stats[i] = make([]*executionStats, len(ss))
+		}
+		for j := range ss {
+			p.stats[i][j] = &executionStats{}
+		}
+	}
+
 	return p
 }
 
@@ -111,12 +125,14 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 	// starting ones (which will be setup a bit differently afterwards).
 	// (Refer to example above for understanding how indexes are mapped)
 	nonStartingStages := p.Stages[1:]
+	nonStartingStats := p.stats[1:]
 	for i, stages := range nonStartingStages {
 		inputChan := dataChans[i]
 		var outputChan chan data.JSON
 		if i < len(nonStartingStages)-1 {
 			outputChan = dataChans[i+1]
 		}
+		stats := nonStartingStats[i]
 
 		logger.Debug(p.Name, ": ", stages, "has inputChan", inputChan, "/ outputChan", outputChan)
 
@@ -128,22 +144,29 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 			if outputChan != nil {
 				outputs := initDataChans(len(stages))
 				p.mergeChans(outputs, outputChan)
-				for i, s := range stages {
+				for j, s := range stages {
+					out := outputs[j]
+					stat := stats[j]
+					if p.RecordStats {
+						out = p.interceptChan(outputs[j], func(d data.JSON) {
+							stat.recordDataSent(d)
+						})
+					}
 					// Each stage runs in it's own goroutine
-					go p.processStage(s, killChan, inputs[i], outputs[i])
+					go p.processStage(s, killChan, inputs[j], out, stat)
 					p.wg.Add(1)
 				}
 			} else {
-				for i, s := range stages {
+				for j, s := range stages {
 					// Each stage runs in it's own goroutine
-					go p.processStage(s, killChan, inputs[i], nil)
+					go p.processStage(s, killChan, inputs[j], nil, stats[j])
 					p.wg.Add(1)
 				}
 			}
 		} else {
 			// If there's just a single Stage to run, no need to set up
 			// extra channels for branching/merging.
-			go p.processStage(stages[0], killChan, inputChan, outputChan)
+			go p.processStage(stages[0], killChan, inputChan, outputChan, stats[0])
 			p.wg.Add(1)
 		}
 	}
@@ -151,43 +174,84 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 	p.setupStartingStages(killChan, dataChans[0])
 }
 
-func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON) {
+func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON, stat *executionStats) {
 	logger.Debug(p.Name, ": Stage", stage, "waiting for data on chan", inputChan)
+
 	for d := range inputChan {
 		logger.Info("Pipeline: Stage", stage, "receiving data:", len(d), "bytes")
 		logger.Debug(string(d))
-		stage.ProcessData(d, outputChan, killChan)
+		if p.RecordStats {
+			stat.recordDataReceived(d)
+			stat.recordExecution(func() {
+				stage.ProcessData(d, outputChan, killChan)
+			})
+		} else {
+			stage.ProcessData(d, outputChan, killChan)
+		}
 	}
+
 	logger.Debug(p.Name, ": Stage", stage, "finishing...")
-	stage.Finish(outputChan, killChan)
+	if p.RecordStats {
+		stat.recordExecution(func() {
+			stage.Finish(outputChan, killChan)
+		})
+	} else {
+		stage.Finish(outputChan, killChan)
+	}
 	logger.Info(p.Name, ": Stage", stage, "finished.", p.timer)
 	p.wg.Done()
 }
 
 func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data.JSON) {
 	startingStages := p.Stages[0]
+	stats := p.stats[0]
 	// Setup the Starter stage and kick off the pipeline execution
 	// The Starter also runs in it's own goroutine
 	if len(startingStages) > 1 {
 		outputs := initDataChans(len(startingStages))
 		p.mergeChans(outputs, outputChan)
 		for i, s := range startingStages {
+			out := outputs[i]
+			stat := stats[i]
+			if p.RecordStats {
+				out = p.interceptChan(outputs[i], func(d data.JSON) {
+					stat.recordDataSent(d)
+				})
+			}
 			// Each stage runs in it's own goroutine
-			go p.processStartingStage(s, killChan, outputs[i])
+			go p.processStartingStage(s, killChan, out, stat)
 			p.wg.Add(1)
 		}
 	} else {
+		out := outputChan
+		stat := stats[0]
 		// In the single-starter case, no need to create extra channels
 		// for branching/merging.
-		go p.processStartingStage(startingStages[0], killChan, outputChan)
+		if p.RecordStats {
+			out = p.interceptChan(outputChan, func(d data.JSON) {
+				stat.recordDataSent(d)
+			})
+		}
+		go p.processStartingStage(startingStages[0], killChan, out, stat)
 		p.wg.Add(1)
 	}
 }
 
-func (p *Pipeline) processStartingStage(startingStage PipelineStage, killChan chan error, outputChan chan data.JSON) {
+func (p *Pipeline) processStartingStage(startingStage PipelineStage, killChan chan error, outputChan chan data.JSON, stat *executionStats) {
 	logger.Debug(p.Name, ": Starting", startingStage)
-	startingStage.ProcessData([]byte(StartSignal), outputChan, killChan)
-	startingStage.Finish(outputChan, killChan)
+	d := []byte(StartSignal)
+
+	if p.RecordStats {
+		stat.recordExecution(func() {
+			startingStage.ProcessData(d, outputChan, killChan)
+		})
+		stat.recordExecution(func() {
+			startingStage.Finish(outputChan, killChan)
+		})
+	} else {
+		startingStage.ProcessData(d, outputChan, killChan)
+		startingStage.Finish(outputChan, killChan)
+	}
 	p.wg.Done()
 }
 
@@ -243,6 +307,26 @@ func (p *Pipeline) branchChans(input chan data.JSON, numCopies int) []chan data.
 	return outputs
 }
 
+// Given the original channel being sent to c, provide a new channel that
+// can be sent to, where function foo will be performed before the data is passed
+// along onto that original channel c. c will be closed after newc is closed.
+// This logic was created for recording stats on data sends.
+func (p *Pipeline) interceptChan(c chan data.JSON, foo func(d data.JSON)) (newc chan data.JSON) {
+	// We still need to bridge communication with a new channel since
+	// the sender will be closing the channel before we can send
+	newc = make(chan data.JSON)
+	logger.Debug(p.Name, ": intercepting channel", c, "into channel", newc)
+
+	go func() {
+		for d := range newc {
+			foo(d)
+			c <- d
+		}
+		close(c)
+	}()
+	return
+}
+
 func initDataChans(length int) []chan data.JSON {
 	cs := make([]chan data.JSON, length)
 	for i := range cs {
@@ -259,4 +343,26 @@ func handleInterrupt(killChan chan error) {
 			killChan <- errors.New("Exiting due to interrupt signal.")
 		}
 	}()
+}
+
+// Stats returns a string (formatted for output display) listing the stats
+// gathered for each stage executed.
+// Note RecordStats must be set to true for full stats to be available.
+func (p *Pipeline) Stats() string {
+	o := fmt.Sprintf("%s: %s\r\n", p.Name, p.timer)
+	if p.RecordStats {
+		for i, stages := range p.Stages {
+			o += fmt.Sprintf("Stage %d)\r\n", i+1)
+			for j, stage := range stages {
+				o += fmt.Sprintf("  * %v\r\n", stage)
+				stat := p.stats[i][j]
+				stat.calculate()
+				o += fmt.Sprintf("     - Total/Avg Execution Time = %f/%fs\r\n", stat.totalExecutionTime, stat.avgExecutionTime)
+				o += fmt.Sprintf("     - Payloads Sent/Received = %d/%d\r\n", stat.dataSentCounter, stat.dataReceivedCounter)
+				o += fmt.Sprintf("     - Total/Avg Bytes Sent = %d/%d\r\n", stat.totalBytesSent, stat.avgBytesSent)
+				o += fmt.Sprintf("     - Total/Avg Bytes Received = %d/%d\r\n", stat.totalBytesReceived, stat.avgBytesReceived)
+			}
+		}
+	}
+	return o
 }
