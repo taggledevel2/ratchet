@@ -21,7 +21,7 @@ type JSON []byte
 func NewJSON(v interface{}) (JSON, error) {
 	d, err := json.Marshal(v)
 	if err != nil {
-		logger.Error(fmt.Sprintf("data: failure to marshal JSON %+v - error is \"%v\"", v, err.Error()))
+		logger.Debug(fmt.Sprintf("data: failure to marshal JSON %+v - error is \"%v\"", v, err.Error()))
 		logger.Debug(fmt.Sprintf("	Failed val: %+v", v))
 	}
 	return d, err
@@ -31,7 +31,7 @@ func NewJSON(v interface{}) (JSON, error) {
 func ParseJSON(d JSON, v interface{}) error {
 	err := json.Unmarshal(d, v)
 	if err != nil {
-		logger.Error(fmt.Sprintf("data: failure to unmarshal JSON into %+v - error is \"%v\"", v, err.Error()))
+		logger.Debug(fmt.Sprintf("data: failure to unmarshal JSON into %+v - error is \"%v\"", v, err.Error()))
 		logger.Debug(fmt.Sprintf("	Failed Data: %+v", string(d)))
 	}
 	return err
