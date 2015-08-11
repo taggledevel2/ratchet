@@ -79,7 +79,6 @@ func JSONFromHeaderAndRows(header []string, rows [][]interface{}) (JSON, error) 
 	var b bytes.Buffer
 	b.Write([]byte("["))
 	for i, row := range rows {
-		fmt.Println(i, "of", len(rows))
 		if i > 0 {
 			b.Write([]byte(","))
 		}
