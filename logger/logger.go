@@ -5,7 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
-	"runtime/debug"
+	"runtime"
 )
 
 const (
@@ -35,7 +35,7 @@ var defaultLogger = log.New(os.Stdout, "", log.LstdFlags)
 func Debug(v ...interface{}) {
 	logit(LogLevelDebug, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelDebug, debug.Stack(), v)
+		Notifier.RatchetNotify(LogLevelDebug, nil, v)
 	}
 }
 
@@ -43,7 +43,7 @@ func Debug(v ...interface{}) {
 func Info(v ...interface{}) {
 	logit(LogLevelInfo, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelInfo, debug.Stack(), v)
+		Notifier.RatchetNotify(LogLevelInfo, nil, v)
 	}
 }
 
@@ -51,7 +51,9 @@ func Info(v ...interface{}) {
 func Error(v ...interface{}) {
 	logit(LogLevelError, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelError, debug.Stack(), v)
+		trace := make([]byte, 4096)
+		runtime.Stack(trace, true)
+		Notifier.RatchetNotify(LogLevelError, trace, v)
 	}
 }
 
@@ -60,7 +62,7 @@ func Error(v ...interface{}) {
 func Status(v ...interface{}) {
 	logit(LogLevelStatus, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelStatus, debug.Stack(), v)
+		Notifier.RatchetNotify(LogLevelStatus, nil, v)
 	}
 }
 
