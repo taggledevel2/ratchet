@@ -57,6 +57,16 @@ func Error(v ...interface{}) {
 	}
 }
 
+// ErrorWithoutTrace logs output when LogLevel is set to at least Error level
+// but doesn't send the stack trace to Notifier. This is useful only when
+// using a RatchetNotifier implementation.
+func ErrorWithoutTrace(v ...interface{}) {
+	logit(LogLevelError, v)
+	if Notifier != nil {
+		Notifier.RatchetNotify(LogLevelError, nil, v)
+	}
+}
+
 // Status logs output when LogLevel is set to at least Status level
 // Status output is high-level status events like stages starting/completing.
 func Status(v ...interface{}) {

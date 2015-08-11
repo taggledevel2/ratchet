@@ -96,7 +96,7 @@ L:
 		select {
 		case bqData, ok := <-bqDataChan:
 			util.KillPipelineIfErr(bqData.Err, killChan)
-			logger.Debug("BigQueryReader: received data:")
+			logger.Info("BigQueryReader: received data:")
 			logger.Debug("   %+v", bqData)
 
 			if bqData.Rows != nil && bqData.Headers != nil && len(bqData.Rows) > 0 {
