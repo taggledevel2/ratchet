@@ -19,12 +19,13 @@ var StartSignal = "GO"
 
 // Pipeline is the main construct used for running a series of stages within a data pipeline.
 type Pipeline struct {
-	Name        string // Name is simply for display purpsoses in log output.
-	Stages      [][]PipelineStage
-	stats       [][]*executionStats
-	RecordStats bool // RecordStats can be set to false to avoid creating extra channels and some minor overhead.
-	timer       *util.Timer
-	wg          sync.WaitGroup
+	Name         string // Name is simply for display purpsoses in log output.
+	Stages       [][]PipelineStage
+	BufferLength int // Set to control channel buffering, default is 4.
+	stats        [][]*executionStats
+	RecordStats  bool // RecordStats can be set to false to avoid creating extra channels and some minor overhead.
+	timer        *util.Timer
+	wg           sync.WaitGroup
 }
 
 // NewPipeline returns a new basic Pipeline given one or more stages that will
@@ -62,7 +63,7 @@ func NewPipeline(stages ...PipelineStage) *Pipeline {
 // (D) This last stage works similarly as the prior steps. stages5&6 both receive a copy of data sent from all of stages2-4.
 //
 func NewBranchingPipeline(stageSlices ...[]PipelineStage) *Pipeline {
-	p := &Pipeline{Name: "Pipeline", Stages: stageSlices, RecordStats: true}
+	p := &Pipeline{Name: "Pipeline", Stages: stageSlices, RecordStats: true, BufferLength: 4}
 
 	// setup stats to match the stages
 	p.stats = make([][]*executionStats, len(stageSlices))
@@ -103,7 +104,7 @@ func (p *Pipeline) Run() (killChan chan error) {
 	// Example:
 	//	Pipeline: |StarterStage| dataChan0-> |Stage0| dataChan1-> |Stage1| -> killChan
 
-	dataChans := initDataChans(len(p.Stages) - 1)
+	dataChans := p.initDataChans(len(p.Stages) - 1)
 	killChan = make(chan error)
 	logger.Debug(p.Name, ": data channels", dataChans)
 	handleInterrupt(killChan)
@@ -142,7 +143,7 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 			inputs := p.branchChans(inputChan, len(stages))
 			// no merging needed for final stage
 			if outputChan != nil {
-				outputs := initDataChans(len(stages))
+				outputs := p.initDataChans(len(stages))
 				p.mergeChans(outputs, outputChan)
 				for j, s := range stages {
 					out := outputs[j]
@@ -208,7 +209,7 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 	// Setup the Starter stage and kick off the pipeline execution
 	// The Starter also runs in it's own goroutine
 	if len(startingStages) > 1 {
-		outputs := initDataChans(len(startingStages))
+		outputs := p.initDataChans(len(startingStages))
 		p.mergeChans(outputs, outputChan)
 		for i, s := range startingStages {
 			out := outputs[i]
@@ -283,7 +284,7 @@ func (p *Pipeline) mergeChans(inputs []chan data.JSON, output chan data.JSON) {
 }
 
 func (p *Pipeline) branchChans(input chan data.JSON, numCopies int) []chan data.JSON {
-	outputs := initDataChans(numCopies)
+	outputs := p.initDataChans(numCopies)
 	logger.Debug(p.Name, ": branching channel", input, "into channels", outputs)
 
 	// Receive all data from input, sending the data receieved
@@ -314,7 +315,7 @@ func (p *Pipeline) branchChans(input chan data.JSON, numCopies int) []chan data.
 func (p *Pipeline) interceptChan(c chan data.JSON, foo func(d data.JSON)) (newc chan data.JSON) {
 	// We still need to bridge communication with a new channel since
 	// the sender will be closing the channel before we can send
-	newc = make(chan data.JSON)
+	newc = p.initDataChan()
 	logger.Debug(p.Name, ": intercepting channel", c, "into channel", newc)
 
 	go func() {
@@ -327,12 +328,15 @@ func (p *Pipeline) interceptChan(c chan data.JSON, foo func(d data.JSON)) (newc 
 	return
 }
 
-func initDataChans(length int) []chan data.JSON {
+func (p *Pipeline) initDataChans(length int) []chan data.JSON {
 	cs := make([]chan data.JSON, length)
 	for i := range cs {
-		cs[i] = make(chan data.JSON)
+		cs[i] = p.initDataChan()
 	}
 	return cs
+}
+func (p *Pipeline) initDataChan() chan data.JSON {
+	return make(chan data.JSON, p.BufferLength)
 }
 
 func handleInterrupt(killChan chan error) {
