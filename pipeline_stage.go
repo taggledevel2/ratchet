@@ -48,3 +48,22 @@ type PipelineStage interface {
 	// stage in the pipeline, outputChan will be nil.*
 	Finish(outputChan chan data.JSON, killChan chan error)
 }
+
+// ConcurrentPipelineStage is a PipelineStage that also defines
+// a level of concurrency. For example, if Concurrency() returns 2,
+// then the pipeline will allow the stage to execute 2 ProcessData()
+// calls concurrently.
+//
+// NOTE: The order of data processing is maintained, meaning that
+// when a stage receives ProcessData calls with d1, d2, ..., the resulting data
+// payloads sent on the outputChan will be sent in the same order as received.
+type ConcurrentPipelineStage interface {
+	PipelineStage
+	Concurrency() int
+}
+
+// IsConcurrent returns true if the given PipelineStage implements ConcurrentPipelineStage
+func IsConcurrent(s PipelineStage) bool {
+	_, ok := interface{}(s).(ConcurrentPipelineStage)
+	return ok
+}

@@ -25,6 +25,7 @@ type SQLReader struct {
 	sqlGenerator      func(data.JSON) (string, error)
 	BatchSize         int
 	StructDestination interface{}
+	ConcurrencyLevel  int // See ConcurrentPipelineStage
 }
 
 type dataErr struct {
@@ -87,4 +88,9 @@ func (s *SQLReader) Finish(outputChan chan data.JSON, killChan chan error) {
 
 func (s *SQLReader) String() string {
 	return "SQLReader"
+}
+
+// See ConcurrentPipelineStage
+func (s *SQLReader) Concurrency() int {
+	return s.ConcurrencyLevel
 }

@@ -22,9 +22,10 @@ import (
 // multiple tables (e.g., when the preceding stage is building 2+
 // separate data sets), you can pass in SQLWriterData.
 type SQLWriter struct {
-	writeDB        *sql.DB
-	TableName      string
-	OnDupKeyUpdate bool
+	writeDB          *sql.DB
+	TableName        string
+	OnDupKeyUpdate   bool
+	ConcurrencyLevel int // See ConcurrentPipelineStage
 }
 
 // SQLWriterData is a custom data structure you can send into a SQLWriter
@@ -73,4 +74,9 @@ func (s *SQLWriter) Finish(outputChan chan data.JSON, killChan chan error) {
 
 func (s *SQLWriter) String() string {
 	return "SQLWriter"
+}
+
+// See ConcurrentPipelineStage
+func (s *SQLWriter) Concurrency() int {
+	return s.ConcurrencyLevel
 }

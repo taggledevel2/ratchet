@@ -30,6 +30,7 @@ type BigQueryReader struct {
 	BatchSize        int    // defaults to 2500
 	UnflattenResults bool   // defaults to false
 	TmpTableName     string // Used when UnflattenResults is true. default to "_ratchet_tmp"
+	ConcurrencyLevel int    // See ConcurrentPipelineStage
 }
 
 // BigQueryConfig is used when init'ing new BigQueryReader instances.
@@ -96,8 +97,8 @@ L:
 		select {
 		case bqData, ok := <-bqDataChan:
 			util.KillPipelineIfErr(bqData.Err, killChan)
-			logger.Info("BigQueryReader: received data:")
-			logger.Debug("   %+v", bqData)
+			logger.Info("BigQueryReader: received bqData:")
+			// logger.Debug("   %+v", bqData)
 
 			if bqData.Rows != nil && bqData.Headers != nil && len(bqData.Rows) > 0 {
 				d, err := data.JSONFromHeaderAndRows(bqData.Headers, bqData.Rows)
@@ -115,6 +116,11 @@ L:
 
 func (r *BigQueryReader) String() string {
 	return "BigQueryReader"
+}
+
+// See ConcurrentPipelineStage
+func (r *BigQueryReader) Concurrency() int {
+	return r.ConcurrencyLevel
 }
 
 func (r *BigQueryReader) bqClient() *bigquery.Client {

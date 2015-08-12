@@ -8,8 +8,9 @@ import "github.com/DailyBurn/ratchet/data"
 // While FuncTransformer is useful for simple data transformation, more
 // complicated tasks justify building a custom implementation of PipelineStage.
 type FuncTransformer struct {
-	transform func(d data.JSON) data.JSON
-	Name      string // can be set for more useful log output
+	transform        func(d data.JSON) data.JSON
+	Name             string // can be set for more useful log output
+	ConcurrencyLevel int    // See ConcurrentPipelineStage
 }
 
 func NewFuncTransformer(transform func(d data.JSON) data.JSON) *FuncTransformer {
@@ -31,4 +32,9 @@ func (t *FuncTransformer) String() string {
 		return t.Name
 	}
 	return "FuncTransformer"
+}
+
+// See ConcurrentPipelineStage
+func (t *FuncTransformer) Concurrency() int {
+	return t.ConcurrencyLevel
 }
