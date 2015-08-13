@@ -21,9 +21,10 @@ var StartSignal = "GO"
 type Pipeline struct {
 	Name         string // Name is simply for display purpsoses in log output.
 	BufferLength int    // Set to control channel buffering, default is 8.
+	PrintData    bool   // Set to true to log full data payloads (only in Debug logging mode).
 	Stages       [][]PipelineStage
 	stats        [][]*executionStats
-	dataHandlers [][]*dataHandlerQueue
+	dataHandlers [][]*dataHandler
 	timer        *util.Timer
 	wg           sync.WaitGroup
 }
@@ -63,7 +64,7 @@ func NewPipeline(stages ...PipelineStage) *Pipeline {
 // (D) This last stage works similarly as the prior steps. stages5&6 both receive a copy of data sent from all of stages2-4.
 //
 func NewBranchingPipeline(stageSlices ...[]PipelineStage) *Pipeline {
-	p := &Pipeline{Name: "Pipeline", Stages: stageSlices, BufferLength: 8}
+	p := &Pipeline{Name: "Pipeline", Stages: stageSlices, BufferLength: 8, PrintData: false}
 
 	// setup stats to match the stages
 	p.stats = make([][]*executionStats, len(stageSlices))
@@ -74,22 +75,17 @@ func NewBranchingPipeline(stageSlices ...[]PipelineStage) *Pipeline {
 		}
 	}
 	// Setup data hanlders to match the stages
-	// This is related to Concurrently processing PipelineStage's.
+	// This is related to concurrently processing PipelineStages.
 	// See ConcurrentPipelineStage.
-	p.dataHandlers = make([][]*dataHandlerQueue, len(stageSlices))
+	p.dataHandlers = make([][]*dataHandler, len(stageSlices))
 	for i, ss := range stageSlices {
-		p.dataHandlers[i] = make([]*dataHandlerQueue, len(ss))
+		p.dataHandlers[i] = make([]*dataHandler, len(ss))
 		for j, s := range ss {
+			size := 0
 			if IsConcurrent(s) {
-				size := s.(ConcurrentPipelineStage).Concurrency()
-				if size > 0 {
-					p.dataHandlers[i][j] = newdataHandlerQueue(size)
-				} else {
-					p.dataHandlers[i][j] = nil
-				}
-			} else {
-				p.dataHandlers[i][j] = nil
+				size = s.(ConcurrentPipelineStage).Concurrency()
 			}
+			p.dataHandlers[i][j] = newDataHandler(size)
 		}
 	}
 
@@ -152,7 +148,7 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 			outputChan = dataChans[i+1]
 		}
 		stats := nonStartingStats[i]
-		dhs := nonStartingDataHandlers[i]
+		dataHandlers := nonStartingDataHandlers[i]
 
 		logger.Debug(p.Name, ": ", stages, "has inputChan", inputChan, "/ outputChan", outputChan)
 
@@ -167,26 +163,25 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 				for j, s := range stages {
 					out := outputs[j]
 					stat := stats[j]
-					dh := dhs[j]
 					// intercept so we can record stats on sent data
 					out = p.interceptChan(outputs[j], func(d data.JSON) {
 						stat.recordDataSent(d)
 					})
 					// Each stage runs in it's own goroutine
-					go p.processStage(s, killChan, inputs[j], out, dh, stat)
+					go p.processStage(s, killChan, inputs[j], out, dataHandlers[j], stat)
 					p.wg.Add(1)
 				}
 			} else {
 				for j, s := range stages {
 					// Each stage runs in it's own goroutine
-					go p.processStage(s, killChan, inputs[j], nil, dhs[j], stats[j])
+					go p.processStage(s, killChan, inputs[j], nil, dataHandlers[j], stats[j])
 					p.wg.Add(1)
 				}
 			}
 		} else {
 			// If there's just a single Stage to run, no need to set up
 			// extra channels for branching/merging.
-			go p.processStage(stages[0], killChan, inputChan, outputChan, dhs[0], stats[0])
+			go p.processStage(stages[0], killChan, inputChan, outputChan, dataHandlers[0], stats[0])
 			p.wg.Add(1)
 		}
 	}
@@ -194,28 +189,16 @@ func (p *Pipeline) setupStages(killChan chan error, dataChans []chan data.JSON) 
 	p.setupStartingStages(killChan, dataChans[0])
 }
 
-func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON, dh *dataHandlerQueue, stat *executionStats) {
+func (p *Pipeline) processStage(stage PipelineStage, killChan chan error, inputChan, outputChan chan data.JSON, dataHandler *dataHandler, stat *executionStats) {
 	logger.Debug(p.Name, ": Stage", stage, "waiting for data on chan", inputChan)
 
 	for d := range inputChan {
 		logger.Info("Pipeline: Stage", stage, "receiving data:", len(d), "bytes")
-		// logger.Debug(string(d))
-		stat.recordDataReceived(d)
-		if dh != nil {
-			dh.processData(stage, d, outputChan, killChan, stat)
-		} else {
-			stat.recordExecution(func() {
-				stage.ProcessData(d, outputChan, killChan)
-			})
+		if p.PrintData {
+			logger.Debug(string(d))
 		}
-	}
-
-	if dh != nil {
-		// Let the data handler know input is closed, and then
-		// wait for any outstanding data handling goroutines
-		// to finish.
-		dh.inputClosed = true
-		<-dh.doneChan
+		stat.recordDataReceived(d)
+		dataHandler.processData(stage, d, outputChan, killChan, stat)
 	}
 
 	logger.Debug(p.Name, ": Stage", stage, "finishing...")
@@ -238,13 +221,12 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 		for i, s := range startingStages {
 			out := outputs[i]
 			stat := stats[i]
-			dh := dataHandlers[i]
 			// intercept so we can record stats on sent data
 			out = p.interceptChan(outputs[i], func(d data.JSON) {
 				stat.recordDataSent(d)
 			})
 			// Each stage runs in it's own goroutine
-			go p.processStartingStage(s, killChan, out, dh, stat)
+			go p.processStartingStage(s, killChan, out, dataHandlers[i], stat)
 			p.wg.Add(1)
 		}
 	} else {
@@ -252,36 +234,20 @@ func (p *Pipeline) setupStartingStages(killChan chan error, outputChan chan data
 		// for branching/merging.
 		out := outputChan
 		stat := stats[0]
-		dh := dataHandlers[0]
-
 		// intercept so we can record stats on sent data
 		out = p.interceptChan(outputChan, func(d data.JSON) {
 			stat.recordDataSent(d)
 		})
-		go p.processStartingStage(startingStages[0], killChan, out, dh, stat)
+		go p.processStartingStage(startingStages[0], killChan, out, dataHandlers[0], stat)
 		p.wg.Add(1)
 	}
 }
 
-func (p *Pipeline) processStartingStage(startingStage PipelineStage, killChan chan error, outputChan chan data.JSON, dh *dataHandlerQueue, stat *executionStats) {
+func (p *Pipeline) processStartingStage(startingStage PipelineStage, killChan chan error, outputChan chan data.JSON, dataHandler *dataHandler, stat *executionStats) {
 	logger.Debug(p.Name, ": Starting", startingStage)
 	d := []byte(StartSignal)
 
-	if dh != nil {
-		dh.processData(startingStage, d, outputChan, killChan, stat)
-	} else {
-		stat.recordExecution(func() {
-			startingStage.ProcessData(d, outputChan, killChan)
-		})
-	}
-
-	if dh != nil {
-		// Let the data handler know input is closed, and then
-		// wait for any outstanding data handling goroutines
-		// to finish.
-		dh.inputClosed = true
-		<-dh.doneChan
-	}
+	dataHandler.processData(startingStage, d, outputChan, killChan, stat)
 
 	stat.recordExecution(func() {
 		startingStage.Finish(outputChan, killChan)

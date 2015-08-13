@@ -20,6 +20,7 @@ import (
 // object in the form of {"Error": "description"}.
 func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int, structDest interface{}) (chan data.JSON, error) {
 	stmt, err := db.Prepare(query)
+	defer stmt.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +42,6 @@ func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int, structDest int
 	} else {
 		go scanDataGeneric(rows, columns, batchSize, dataChan)
 	}
-
-	go func(rows *sql.Rows, columns []string) {
-
-	}(rows, columns)
 
 	return dataChan, nil
 }
