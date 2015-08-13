@@ -57,6 +57,7 @@ func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan 
 	logger.Debug("dataHandler: processData", stage, "work obtained")
 	rc := make(chan data.JSON)
 	done := make(chan bool)
+	exit := make(chan bool)
 	// setup goroutine to handle result
 	go func() {
 		res := result{outputChan: outputChan, data: []data.JSON{}, open: true}
@@ -76,6 +77,7 @@ func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan 
 				logger.Debug("dataHandler: processData", stage, "done, releasing work")
 				<-dh.workThrottle
 				dh.sendResults()
+				exit <- true
 				return
 			}
 		}
@@ -87,8 +89,8 @@ func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan 
 		done <- true
 	})
 
-	// wait on done chan to return
-	<-done
+	// wait on processing to complete
+	<-exit
 }
 
 // sendResults handles sending work that is completed, as well as
