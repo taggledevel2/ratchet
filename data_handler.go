@@ -34,16 +34,16 @@ type result struct {
 }
 
 func newDataHandler(concurrency int) *dataHandler {
-	if concurrency < 1 {
+	if concurrency <= 1 {
 		return &dataHandler{concurrency: 0}
 	}
 	return &dataHandler{concurrency: concurrency, workThrottle: make(chan workSignal, concurrency), workList: list.New(), doneChan: make(chan bool), inputClosed: false}
 }
 
 func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan chan data.JSON, killChan chan error, stat *executionStats) {
+	logger.Debug("dataHandler: processData", stage, "with concurrency =", dh.concurrency)
 	// If no concurrency is needed, simply call stage.ProcessData and return...
-	if dh.concurrency == 0 {
-		logger.Debug("dataHandler: processData", stage, "without concurrency")
+	if dh.concurrency <= 1 {
 		stat.recordExecution(func() {
 			stage.ProcessData(d, outputChan, killChan)
 		})

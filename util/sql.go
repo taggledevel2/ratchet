@@ -20,10 +20,10 @@ import (
 // object in the form of {"Error": "description"}.
 func GetDataFromSQLQuery(db *sql.DB, query string, batchSize int, structDest interface{}) (chan data.JSON, error) {
 	stmt, err := db.Prepare(query)
-	defer stmt.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 
 	rows, err := stmt.Query()
 	if err != nil {
@@ -183,13 +183,14 @@ func SQLInsertData(db *sql.DB, d data.JSON, tableName string, onDupKeyUpdate boo
 }
 
 func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) error {
+	logger.Info("SQLInsertData: building INSERT for len(objects) =", len(objects))
 	insertSQL := buildInsertSQL(objects, tableName, onDupKeyUpdate)
-	logger.Debug("SQLInsertData:", insertSQL)
 
 	stmt, err := db.Prepare(insertSQL)
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	cols := sortedColumns(objects[0])
 	vals := []interface{}{}
@@ -200,6 +201,9 @@ func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName strin
 			vals = append(vals, object[k])
 		}
 	}
+
+	logger.Debug("SQLInsertData:", insertSQL)
+	// logger.Debug("SQLInsertData: values", vals)
 
 	res, err := stmt.Exec(vals...)
 	if err != nil {
@@ -220,9 +224,9 @@ func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName strin
 
 func buildInsertSQL(objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) (insertSQL string) {
 	cols := sortedColumns(objects[0])
-
 	// Format: INSERT INTO tablename(col1,col2) VALUES(?,?),(?,?)
 	insertSQL = fmt.Sprintf("INSERT INTO %v(%v) VALUES", tableName, strings.Join(cols, ","))
+
 	// builds the (?,?) part
 	vals := "("
 	for i := 0; i < len(cols); i++ {
