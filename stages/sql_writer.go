@@ -51,16 +51,16 @@ func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	}()
 
 	// First check for SQLWriterData
-	wd := SQLWriterData{}
+	var wd SQLWriterData
 	err := data.ParseJSONSilent(d, &wd)
 	logger.Info("SQLWriter: Writing data...")
-	if err != nil {
-		// Normal data scenario
-		err = util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
+	if err == nil && wd.TableName != "" && wd.InsertData != nil {
+		logger.Debug("SQLWriter: SQLWriterData scenario")
+		err = util.SQLInsertData(s.writeDB, wd.InsertData, wd.TableName, s.OnDupKeyUpdate)
 		util.KillPipelineIfErr(err, killChan)
 	} else {
-		// SQLWriterData scenario
-		err = util.SQLInsertData(s.writeDB, wd.InsertData, wd.TableName, s.OnDupKeyUpdate)
+		logger.Debug("SQLWriter: normal data scenario")
+		err = util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
 		util.KillPipelineIfErr(err, killChan)
 	}
 	logger.Info("SQLWriter: Write complete")
