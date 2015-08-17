@@ -164,7 +164,7 @@ func sendTableData(tableData []map[string]interface{}, dataChan chan data.JSON) 
 }
 
 func sendErr(err error, dataChan chan data.JSON) {
-	dataChan <- []byte("{\"Error\":\"" + err.Error() + "\"}")
+	dataChan <- []byte(`{"Error":"` + err.Error() + `"}`)
 }
 
 // SQLInsertData abstracts building and executing a SQL INSERT
@@ -184,23 +184,13 @@ func SQLInsertData(db *sql.DB, d data.JSON, tableName string, onDupKeyUpdate boo
 
 func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) error {
 	logger.Info("SQLInsertData: building INSERT for len(objects) =", len(objects))
-	insertSQL := buildInsertSQL(objects, tableName, onDupKeyUpdate)
+	insertSQL, vals := buildInsertSQL(objects, tableName, onDupKeyUpdate)
 
 	stmt, err := db.Prepare(insertSQL)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-
-	cols := sortedColumns(objects[0])
-	vals := []interface{}{}
-	for _, object := range objects {
-		// Since maps aren't ordered, must iterate over sorted columns
-		// for each object.
-		for _, k := range cols {
-			vals = append(vals, object[k])
-		}
-	}
 
 	logger.Debug("SQLInsertData:", insertSQL)
 	// logger.Debug("SQLInsertData: values", vals)
@@ -222,26 +212,27 @@ func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName strin
 	return nil
 }
 
-func buildInsertSQL(objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) (insertSQL string) {
-	cols := sortedColumns(objects[0])
+func buildInsertSQL(objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) (insertSQL string, vals []interface{}) {
+	cols := sortedColumns(objects)
+
 	// Format: INSERT INTO tablename(col1,col2) VALUES(?,?),(?,?)
 	insertSQL = fmt.Sprintf("INSERT INTO %v(%v) VALUES", tableName, strings.Join(cols, ","))
 
 	// builds the (?,?) part
-	vals := "("
+	qs := "("
 	for i := 0; i < len(cols); i++ {
 		if i > 0 {
-			vals += ","
+			qs += ","
 		}
-		vals += "?"
+		qs += "?"
 	}
-	vals += ")"
+	qs += ")"
 	// append as many (?,?) parts as there are objects to insert
 	for i := 0; i < len(objects); i++ {
 		if i > 0 {
 			insertSQL += ","
 		}
-		insertSQL += vals
+		insertSQL += qs
 	}
 
 	if onDupKeyUpdate {
@@ -255,13 +246,34 @@ func buildInsertSQL(objects []map[string]interface{}, tableName string, onDupKey
 		}
 	}
 
-	return insertSQL
+	vals = []interface{}{}
+	for _, obj := range objects {
+		for _, col := range cols {
+			if val, ok := obj[col]; ok {
+				vals = append(vals, val)
+			} else {
+				vals = append(vals, nil)
+			}
+		}
+	}
+
+	return
 }
 
-func sortedColumns(object map[string]interface{}) []string {
+func sortedColumns(objects []map[string]interface{}) []string {
+	// Since we don't know if all objects have the same keys, we need to
+	// iterate over all the objects to gather all possible keys/columns
+	// to use in the INSERT statement.
+	colsMap := make(map[string]struct{})
+	for _, o := range objects {
+		for col := range o {
+			colsMap[col] = struct{}{}
+		}
+	}
+
 	cols := []string{}
-	for k := range object {
-		cols = append(cols, k)
+	for col := range colsMap {
+		cols = append(cols, col)
 	}
 	sort.Strings(cols)
 	return cols
