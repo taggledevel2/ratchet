@@ -27,7 +27,7 @@ type BigQueryReader struct {
 	config           *BigQueryConfig
 	query            string
 	sqlGenerator     func(data.JSON) (string, error)
-	BatchSize        int    // defaults to 2500
+	BatchSize        int    // defaults to 5000
 	UnflattenResults bool   // defaults to false
 	TmpTableName     string // Used when UnflattenResults is true. default to "_ratchet_tmp"
 	ConcurrencyLevel int    // See ConcurrentPipelineStage
@@ -48,7 +48,7 @@ type BigQueryConfig struct {
 func NewBigQueryReader(config *BigQueryConfig, query string) *BigQueryReader {
 	r := BigQueryReader{config: config}
 	r.query = query
-	r.BatchSize = 2500 // default batch size
+	r.BatchSize = 5000 // default batch size
 	r.UnflattenResults = false
 	r.TmpTableName = "_ratchet_tmp"
 	return &r

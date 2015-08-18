@@ -33,8 +33,8 @@ type SQLWriter struct {
 // extra configuration is needed to use SQLWriterData, each data payload
 // received is first checked for this structure before processing.
 type SQLWriterData struct {
-	TableName  string    `json:"table_name"`
-	InsertData data.JSON `json:"insert_data"`
+	TableName  string      `json:"table_name"`
+	InsertData interface{} `json:"insert_data"`
 }
 
 // NewSQLWriter returns a new SQLWriter
@@ -56,7 +56,9 @@ func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	logger.Info("SQLWriter: Writing data...")
 	if err == nil && wd.TableName != "" && wd.InsertData != nil {
 		logger.Debug("SQLWriter: SQLWriterData scenario")
-		err = util.SQLInsertData(s.writeDB, wd.InsertData, wd.TableName, s.OnDupKeyUpdate)
+		dd, err := data.NewJSON(wd.InsertData)
+		util.KillPipelineIfErr(err, killChan)
+		err = util.SQLInsertData(s.writeDB, dd, wd.TableName, s.OnDupKeyUpdate)
 		util.KillPipelineIfErr(err, killChan)
 	} else {
 		logger.Debug("SQLWriter: normal data scenario")
