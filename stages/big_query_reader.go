@@ -27,7 +27,8 @@ type BigQueryReader struct {
 	config           *BigQueryConfig
 	query            string
 	sqlGenerator     func(data.JSON) (string, error)
-	BatchSize        int    // defaults to 5000
+	PageSize         int    // defaults to 5000
+	AggregateResults bool   // determines whether to send data as soon as available or to aggregate and send all query results, defaults to false
 	UnflattenResults bool   // defaults to false
 	TmpTableName     string // Used when UnflattenResults is true. default to "_ratchet_tmp"
 	ConcurrencyLevel int    // See ConcurrentPipelineStage
@@ -48,7 +49,7 @@ type BigQueryConfig struct {
 func NewBigQueryReader(config *BigQueryConfig, query string) *BigQueryReader {
 	r := BigQueryReader{config: config}
 	r.query = query
-	r.BatchSize = 5000 // default batch size
+	r.PageSize = 5000 // default page size
 	r.UnflattenResults = false
 	r.TmpTableName = "_ratchet_tmp"
 	return &r
@@ -90,27 +91,33 @@ func (r *BigQueryReader) ForEachQueryData(d data.JSON, killChan chan error, forE
 	logger.Debug("BigQueryReader: Running -", sql)
 
 	bqDataChan := make(chan bigquery.Data)
-	go r.bqClient().AsyncQuery(r.BatchSize, r.config.DatasetID, r.config.ProjectID, sql, bqDataChan)
+	go r.bqClient().AsyncQuery(r.PageSize, r.config.DatasetID, r.config.ProjectID, sql, bqDataChan)
+	aggregatedData := bigquery.Data{}
 
-L:
-	for {
-		select {
-		case bqData, ok := <-bqDataChan:
-			util.KillPipelineIfErr(bqData.Err, killChan)
-			logger.Info("BigQueryReader: received bqData:")
-			// logger.Debug("   %+v", bqData)
+	for bqd := range bqDataChan {
+		util.KillPipelineIfErr(bqd.Err, killChan)
+		logger.Info("BigQueryReader: received bqData: len(rows) =", len(bqd.Rows))
+		// logger.Debug("   %+v", bqd)
 
-			if bqData.Rows != nil && bqData.Headers != nil && len(bqData.Rows) > 0 {
-				d, err := data.JSONFromHeaderAndRows(bqData.Headers, bqData.Rows)
+		if bqd.Rows != nil && bqd.Headers != nil && len(bqd.Rows) > 0 {
+			if r.AggregateResults {
+				logger.Debug("BigQueryReader: aggregating results")
+				aggregatedData.Headers = bqd.Headers
+				aggregatedData.Rows = append(aggregatedData.Rows, bqd.Rows...)
+			} else {
+				// Send data as soon as we get it back
+				logger.Debug("BigQueryReader: sending data without aggregation")
+				d, err := data.JSONFromHeaderAndRows(bqd.Headers, bqd.Rows)
 				util.KillPipelineIfErr(err, killChan)
 				forEach(d) // pass back out via the forEach func
 			}
-
-			if !ok {
-				logger.Info("BigQueryReader: done loading rows")
-				break L
-			}
 		}
+	}
+	if r.AggregateResults {
+		logger.Info("BigQueryReader: sending aggregated resutls: len(rows) =", len(aggregatedData.Rows))
+		d, err := data.JSONFromHeaderAndRows(aggregatedData.Headers, aggregatedData.Rows)
+		util.KillPipelineIfErr(err, killChan)
+		forEach(d) // pass back out via the forEach func
 	}
 }
 
