@@ -2,7 +2,6 @@ package stages
 
 import (
 	"encoding/csv"
-	"fmt"
 	"io"
 
 	"github.com/DailyBurn/ratchet/data"
@@ -18,6 +17,7 @@ type CSVWriter struct {
 	writer        *csv.Writer
 	WriteHeader   bool
 	headerWritten bool
+	header        []string
 }
 
 // NewCSVWriter returns a new CSVWriter wrapping the given io.Writer object
@@ -30,20 +30,23 @@ func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	objects, err := data.ObjectsFromJSON(d)
 	util.KillPipelineIfErr(err, killChan)
 
+	if w.header == nil {
+		for k := range objects[0] {
+			w.header = append(w.header, k)
+		}
+	}
+
 	rows := [][]string{}
 	if w.WriteHeader && !w.headerWritten {
-		header := []string{}
-		for k := range objects[0] {
-			header = append(header, k)
-		}
-		rows = append(rows, header)
+		rows = append(rows, w.header)
 		w.headerWritten = true
 	}
 
 	for _, object := range objects {
 		row := []string{}
-		for _, v := range object {
-			row = append(row, fmt.Sprintf("%v", v))
+		for i := range w.header {
+			v := object[w.header[i]]
+			row = append(row, util.CSVString(v))
 		}
 		rows = append(rows, row)
 	}
