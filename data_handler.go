@@ -19,9 +19,9 @@ type dataHandler struct {
 	concurrency  int
 	workThrottle chan workSignal
 	workList     *list.List
-	mutex        sync.Mutex
 	doneChan     chan bool
 	inputClosed  bool
+	sync.Mutex
 }
 
 type workSignal struct{}
@@ -61,9 +61,9 @@ func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan 
 	// setup goroutine to handle result
 	go func() {
 		res := result{outputChan: outputChan, data: []data.JSON{}, open: true}
-		dh.mutex.Lock()
+		dh.Lock()
 		dh.workList.PushBack(&res)
-		dh.mutex.Unlock()
+		dh.Unlock()
 		logger.Debug("dataHandler: processData", stage, "waiting to receive data on result chan")
 		for {
 			select {
@@ -97,7 +97,7 @@ func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan 
 // guaranteeing a FIFO order of the resulting data sent over the
 // original outputChan.
 func (dh *dataHandler) sendResults() {
-	dh.mutex.Lock()
+	dh.Lock()
 	logger.Debug("dataHandler: sendResults checking for valid data to send")
 	e := dh.workList.Front()
 	for e != nil && e.Value.(*result).done {
@@ -112,7 +112,7 @@ func (dh *dataHandler) sendResults() {
 		}
 		e = dh.workList.Front()
 	}
-	dh.mutex.Unlock()
+	dh.Unlock()
 
 	if dh.inputClosed && dh.workList.Len() == 0 {
 		dh.doneChan <- true
