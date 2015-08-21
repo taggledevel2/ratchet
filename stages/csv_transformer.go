@@ -3,8 +3,6 @@ package stages
 import (
 	"bufio"
 	"bytes"
-	"encoding/csv"
-	"fmt"
 
 	"github.com/DailyBurn/ratchet/data"
 	"github.com/DailyBurn/ratchet/util"
@@ -33,24 +31,26 @@ func (w *CSVTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 
 	rows := [][]string{}
 	if w.WriteHeader && !w.headerWritten {
+		header_row := []string{}
 		header := []string{}
 		for k := range objects[0] {
 			header = append(header, k)
+			header_row = append(header_row, util.CSVString(k))
 		}
-		rows = append(rows, header)
+		rows = append(rows, header_row)
 		w.headerWritten = true
 	}
 
 	for _, object := range objects {
 		row := []string{}
 		for _, v := range object {
-			row = append(row, fmt.Sprintf("%v", v))
+			row = append(row, util.CSVString(v))
 		}
 		rows = append(rows, row)
 	}
 
 	var b bytes.Buffer
-	writer := csv.NewWriter(bufio.NewWriter(&b))
+	writer := util.NewCSVWriter(bufio.NewWriter(&b))
 
 	err = writer.WriteAll(rows)
 	util.KillPipelineIfErr(err, killChan)

@@ -1,12 +1,9 @@
 package stages
 
 import (
-	"encoding/csv"
-	"fmt"
-	"io"
-
 	"github.com/DailyBurn/ratchet/data"
 	"github.com/DailyBurn/ratchet/util"
+	"io"
 )
 
 // CSVWriter is handles converting data.JSON objects into CSV format,
@@ -15,14 +12,15 @@ import (
 // If you already have Data formatted as a CSV string you can
 // use an IoWriter instead.
 type CSVWriter struct {
-	writer        *csv.Writer
+	writer        *util.CSVWriter
 	WriteHeader   bool
 	headerWritten bool
+	header        []string
 }
 
 // NewCSVWriter returns a new CSVWriter wrapping the given io.Writer object
 func NewCSVWriter(w io.Writer) *CSVWriter {
-	return &CSVWriter{writer: csv.NewWriter(w), WriteHeader: true, headerWritten: false}
+	return &CSVWriter{writer: util.NewCSVWriter(w), WriteHeader: true, headerWritten: false}
 }
 
 func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
@@ -30,20 +28,25 @@ func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	objects, err := data.ObjectsFromJSON(d)
 	util.KillPipelineIfErr(err, killChan)
 
+	header_row := []string{}
+	if w.header == nil {
+		for k := range objects[0] {
+			w.header = append(w.header, k)
+			header_row = append(header_row, util.CSVString(k))
+		}
+	}
+
 	rows := [][]string{}
 	if w.WriteHeader && !w.headerWritten {
-		header := []string{}
-		for k := range objects[0] {
-			header = append(header, k)
-		}
-		rows = append(rows, header)
+		rows = append(rows, header_row)
 		w.headerWritten = true
 	}
 
 	for _, object := range objects {
 		row := []string{}
-		for _, v := range object {
-			row = append(row, fmt.Sprintf("%v", v))
+		for i := range w.header {
+			v := object[w.header[i]]
+			row = append(row, util.CSVString(v))
 		}
 		rows = append(rows, row)
 	}
