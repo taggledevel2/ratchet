@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import "github.com/DailyBurn/ratchet/data"
 
@@ -22,9 +22,6 @@ func (t *FuncTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, ki
 }
 
 func (t *FuncTransformer) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (t *FuncTransformer) String() string {

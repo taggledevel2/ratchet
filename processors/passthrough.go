@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import "github.com/DailyBurn/ratchet/data"
 
@@ -15,7 +15,6 @@ func (r *Passthrough) ProcessData(d data.JSON, outputChan chan data.JSON, killCh
 }
 
 func (r *Passthrough) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (r *Passthrough) String() string {

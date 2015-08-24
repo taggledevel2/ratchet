@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"database/sql"
@@ -44,7 +44,6 @@ func (s *SQLReaderWriter) ProcessData(d data.JSON, outputChan chan data.JSON, ki
 }
 
 func (s *SQLReaderWriter) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (s *SQLReaderWriter) String() string {

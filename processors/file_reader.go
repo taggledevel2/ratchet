@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"io/ioutil"
@@ -26,7 +26,6 @@ func (r *FileReader) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 }
 
 func (r *FileReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (r *FileReader) String() string {

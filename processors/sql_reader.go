@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"database/sql"
@@ -83,7 +83,6 @@ func (s *SQLReader) ForEachQueryData(d data.JSON, killChan chan error, forEach f
 
 // Finish - see interface for documentation.
 func (s *SQLReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (s *SQLReader) String() string {

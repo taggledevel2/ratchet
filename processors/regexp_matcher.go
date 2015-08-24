@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"regexp"
@@ -35,7 +35,6 @@ func (r *RegexpMatcher) ProcessData(d data.JSON, outputChan chan data.JSON, kill
 }
 
 func (r *RegexpMatcher) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (r *RegexpMatcher) String() string {

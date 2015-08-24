@@ -1,10 +1,8 @@
 package ratchet
 
-import (
-	"github.com/DailyBurn/ratchet/data"
-)
-
 // PipelineStage is the interface used to process data within a Pipeline.
+import "github.com/DailyBurn/ratchet/data"
+
 // The Pipeline is responsible for passing data between each stage,
 // and each stage will receive data in it's ProcessData function and send along
 // a new data payload on it's output channel.
@@ -36,7 +34,7 @@ import (
 //     * Should handle writing data out to a final location, but should NOT send to outputChan (it will be nil).
 //     * Will receive a call to Finish when the preceding stage is completed.
 //     * Should close(outputChan) when done handling data (typically done in Finish).
-type PipelineStage interface {
+type DataProcessor interface {
 	// ProcessData will be called for each data sent on the previous stage's outputChan
 	ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error)
 
@@ -57,13 +55,13 @@ type PipelineStage interface {
 // NOTE: The order of data processing is maintained, meaning that
 // when a stage receives ProcessData calls with d1, d2, ..., the resulting data
 // payloads sent on the outputChan will be sent in the same order as received.
-type ConcurrentPipelineStage interface {
-	PipelineStage
+type ConcurrentDataProcessor interface {
+	DataProcessor
 	Concurrency() int
 }
 
 // IsConcurrent returns true if the given PipelineStage implements ConcurrentPipelineStage
-func IsConcurrent(s PipelineStage) bool {
-	_, ok := interface{}(s).(ConcurrentPipelineStage)
+func IsConcurrent(p DataProcessor) bool {
+	_, ok := interface{}(p).(DataProcessor)
 	return ok
 }

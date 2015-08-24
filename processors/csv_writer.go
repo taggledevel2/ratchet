@@ -1,9 +1,10 @@
-package stages
+package processors
 
 import (
+	"io"
+
 	"github.com/DailyBurn/ratchet/data"
 	"github.com/DailyBurn/ratchet/util"
-	"io"
 )
 
 // CSVWriter is handles converting data.JSON objects into CSV format,
@@ -56,9 +57,6 @@ func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 }
 
 func (w *CSVWriter) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (w *CSVWriter) String() string {

@@ -1,10 +1,11 @@
-package stages
+package processors
 
 import (
 	"fmt"
+	"os/exec"
+
 	"github.com/DailyBurn/ratchet/data"
 	"github.com/DailyBurn/ratchet/util"
-	"os/exec"
 )
 
 type Scp struct {
@@ -24,9 +25,6 @@ func (s *Scp) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan 
 
 func (s *Scp) Finish(outputChan chan data.JSON, killChan chan error) {
 	s.Run(killChan)
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (s *Scp) Run(killChan chan error) {

@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"io"
@@ -34,9 +34,6 @@ func (r *IoReaderWriter) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 }
 
 func (r *IoReaderWriter) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (r *IoReaderWriter) String() string {

@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"bufio"
@@ -28,7 +28,6 @@ func (r *IoReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan 
 }
 
 func (r *IoReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (r *IoReader) ForEachData(killChan chan error, foo func(d data.JSON)) {

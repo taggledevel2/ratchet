@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"bufio"
@@ -59,9 +59,6 @@ func (w *CSVTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 }
 
 func (w *CSVTransformer) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (w *CSVTransformer) String() string {

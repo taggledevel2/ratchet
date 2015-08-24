@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"errors"
@@ -70,7 +70,6 @@ func (r *BigQueryReader) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 }
 
 func (r *BigQueryReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 // ForEachQueryData handles generating the SQL (in case of dynamic mode),
