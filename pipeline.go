@@ -2,7 +2,6 @@ package ratchet
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -12,7 +11,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// StartSignal is what's sent to a starting PipelineStage's ProcessData
+// StartSignal is what's sent to a starting DataProcessor
 // to kick off execution. Typically this value will be ignored.
 var StartSignal = "GO"
 
@@ -49,189 +48,6 @@ func NewPipeline(processors ...DataProcessor) *Pipeline {
 func NewBranchingPipeline(layout *PipelineLayout) *Pipeline {
 	p := &Pipeline{layout: layout, Name: "Pipeline"}
 	return p
-}
-
-// PipelineLayout holds a series of PipelineStage instances.
-type PipelineLayout struct {
-	stages []*PipelineStage
-}
-
-// NewPipelineLayout creates and validates a new PipelineLayout instance which
-// can be used to create a NewBranchingPipeline. See the ratchet package
-// documentation for code examples and diagrams.
-func NewPipelineLayout(stages ...*PipelineStage) (*PipelineLayout, error) {
-	l := &PipelineLayout{stages}
-	if err := l.validate(); err != nil {
-		return nil, err
-	}
-	return l, nil
-}
-
-// validate returns an error or nil
-//
-// A valid PipelineLayout meets these conditions:
-// 1) final stages must NOT have outputs set
-// 2) non-final stages must HAVE outputs set
-// 3) outputs must point to a DataProcessor in the next immediate stage
-// 4) a non-starting DataProcessor must be pointed to by one of the previous outputs
-func (l *PipelineLayout) validate() error {
-	var stage *PipelineStage
-	for stageNum := range l.stages {
-		stage = l.stages[stageNum]
-		var dp *dataProcessor
-		for j := range stage.processors {
-			dp = stage.processors[j]
-			// 1) final stages must NOT have outputs set
-			// 2) non-final stages must HAVE outputs set
-			if stageNum == len(l.stages)-1 && dp.outputs != nil {
-				return fmt.Errorf("DataProcessor (%v) must have Outputs set in final PipelineStage", dp)
-			} else if stageNum != len(l.stages)-1 && dp.outputs == nil {
-				return fmt.Errorf("DataProcessor (%v) must have Outputs set in non-final PipelineStage #%d", dp, stageNum+1)
-			}
-			// 3) outputs must point to a DataProcessor in the next immediate stage
-			if stageNum < len(l.stages)-1 {
-				nextStage := l.stages[stageNum+1]
-				for k := range dp.outputs {
-					if !nextStage.hasProcessor(dp.outputs[k]) {
-						return fmt.Errorf("DataProcessor (%v) Outputs must point to DataProcessor in the next PipelineStage #%d", dp, stageNum+2)
-					}
-				}
-			}
-			// 4) a non-starting DataProcessor must be pointed to by one of the previous outputs
-			if stageNum > 0 {
-				prevStage := l.stages[stageNum-1]
-				if !prevStage.hasOutput(dp.DataProcessor) {
-					return fmt.Errorf("DataProcessor (%v) is not pointed to by any output in the previous PipelineStage #%d", dp, stageNum)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// PipelineStage contains one or more dataProcessor instances.
-type PipelineStage struct {
-	processors []*dataProcessor
-}
-
-// NewPipelineStage creates a PipelineStage instance given a series
-// of dataProcessors. See the ratchet package
-// documentation for code examples and diagrams.
-func NewPipelineStage(processors ...*dataProcessor) *PipelineStage {
-	return &PipelineStage{processors}
-}
-
-func (s *PipelineStage) hasProcessor(p DataProcessor) bool {
-	for i := range s.processors {
-		if s.processors[i].DataProcessor == p {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *PipelineStage) hasOutput(p DataProcessor) bool {
-	for i := range s.processors {
-		for j := range s.processors[i].outputs {
-			if s.processors[i].outputs[j] == p {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// dataProcessor is a type used internally to the Pipeline management
-// code, and wraps a DataProcessor instance. DataProcessor is the main
-// interface that should be implemented to perform work within the data
-// pipeline, and this dataProcessor type simply embeds it and adds some
-// helpful channel management and other attributes.
-type dataProcessor struct {
-	DataProcessor
-	outputs    []DataProcessor
-	inputChan  chan data.JSON
-	outputChan chan data.JSON
-	brancher   *chanBrancher
-	merger     *chanMerger
-	// ExecutionStat
-	// dataHandler
-	// timer util.Timer
-}
-
-type chanBrancher struct {
-	outputChans []chan data.JSON
-}
-
-func (b *chanBrancher) branchOut(fromChan chan data.JSON) {
-	go func() {
-		for d := range fromChan {
-			for _, out := range b.outputChans {
-				// Make a copy to ensure concurrent stages
-				// can alter data as needed.
-				dc := make(data.JSON, len(d))
-				copy(dc, d)
-				out <- dc
-			}
-		}
-		// Once all data is received, also close all the outputs
-		for _, out := range b.outputChans {
-			logger.Debug(b, "branchOut closing", out)
-			close(out)
-		}
-	}()
-}
-
-type chanMerger struct {
-	inputChans []chan data.JSON
-	sync.WaitGroup
-}
-
-func (m *chanMerger) mergeIn(toChan chan data.JSON) {
-	// Start an output goroutine for each input channel.
-	mergeData := func(c chan data.JSON) {
-		for d := range c {
-			toChan <- d
-		}
-		m.Done()
-	}
-	m.Add(len(m.inputChans))
-	for _, c := range m.inputChans {
-		go mergeData(c)
-	}
-
-	go func() {
-		logger.Debug(m, "mergeIn waiting")
-		m.Wait()
-		logger.Debug(m, "mergeIn closing", toChan)
-		close(toChan)
-	}()
-}
-
-// Do takes a DataProcessor instance and returns the dataProcessor
-// type that will wrap it for internal ratchet processing. The details
-// of the dataProcessor wrapper type are abstracted away from the
-// implementing end-user code. The "Do" function is named
-// succinctly to provide a nicer syntax when creating a PipelineLayout.
-// See the ratchet package documentation for code examples of creating
-// a new branching pipeline layout.
-func Do(processor DataProcessor) *dataProcessor {
-	dp := dataProcessor{DataProcessor: processor}
-	dp.outputChan = make(chan data.JSON)
-	dp.inputChan = make(chan data.JSON)
-	return &dp
-}
-
-// Outputs should be called to specify which DataProcessor instances the current
-// processor should send it's output to. See the ratchet package
-// documentation for code examples and diagrams.
-func (dp *dataProcessor) Outputs(processors ...DataProcessor) *dataProcessor {
-	dp.outputs = processors
-	return dp
-}
-
-// pass through String output to the DataProcessor
-func (dp *dataProcessor) String() string {
-	return fmt.Sprintf("%v", dp.DataProcessor)
 }
 
 // In order to support the branching PipelineLayout creation syntax, the
@@ -317,7 +133,7 @@ func (p *Pipeline) runStages(killChan chan error) {
 	}
 }
 
-// Run finalizes the channel connection between PipelineStages
+// Run finalizes the channel connections between PipelineStages
 // and kicks off execution.
 // Run will return a killChan that should be waited on so your calling function doesn't
 // return prematurely. Any stage of the pipeline can send to the killChan to halt

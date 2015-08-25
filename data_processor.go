@@ -1,67 +1,138 @@
 package ratchet
 
-// PipelineStage is the interface used to process data within a Pipeline.
-import "github.com/DailyBurn/ratchet/data"
+import (
+	"fmt"
+	"sync"
 
-// The Pipeline is responsible for passing data between each stage,
-// and each stage will receive data in it's ProcessData function and send along
-// a new data payload on it's output channel.
-//
-// When the stage is finished sending all of it's data, it should close the output
-// channel (the exception being when it is the final stage in the pipeline, where outputChan
-// will be nil). This will almost always occur in the stage's Finish() function, which is called
-// after the previous stage has closed it's ouput channel (i.e. is finished sending data).
-// Finish() can also be used to send a final Data payload in use-cases where the stage
-// is batching up multiple Data payloads and needs to send an aggregated Data object
-// once all processing is complete.
-//
-// If an unexpected error occurs, it should be sent to the killChan to halt
-// pipeline execution.
-//
-// To outline:
-//
-//   * Initial PipelineStage:
-//     * Will receive a "GO" in ProcessData when the Pipeline is Run.
-//     * Should send one or more data payloads on it's outputChan.
-//     * Should close(outputChan) when done sending data (typically done in Finish).
-//   * Intermediate PipelineStage:
-//     * Will receive a call to ProcessData for each data payload sent from the preceding PipelineStage.
-//     * Should send one or more data payloads on it's outputChan.
-//     * Will receive a call to Finish when the preceding stage is completed.
-//     * Should close(outputChan) when done sending data (typically done in Finish).
-//   * Final PipelineStage:
-//     * Will receive a call to ProcessData for each data payload sent from the preceding PipelineStage.
-//     * Should handle writing data out to a final location, but should NOT send to outputChan (it will be nil).
-//     * Will receive a call to Finish when the preceding stage is completed.
-//     * Should close(outputChan) when done handling data (typically done in Finish).
+	"github.com/DailyBurn/ratchet/data"
+	"github.com/DailyBurn/ratchet/logger"
+)
+
+// DataProcessor is the interface that should be implemented to perform data-related
+// tasks within a Pipeline. DataProcessors are responsible for receiving, processing,
+// and then sending data on to the next stage of processing.
 type DataProcessor interface {
-	// ProcessData will be called for each data sent on the previous stage's outputChan
+	// ProcessData will be called for each data sent from the previous stage.
+	// ProcessData is called with a data.JSON instance, which is the data being received,
+	// an outputChan, which is the channel to send data to, and a killChan,
+	// which is a channel to send unexpected errors to (halting execution of the Pipeline).
 	ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error)
 
-	// Finish will be called after the previous stage has closed it's outputChan
-	// and won't be sending any more data. So, Finish() will be be called after
-	// the last call to ProcessData().
-	//
-	// *Note: If the PipelineStage instance receiving the Finish() call is the last
-	// stage in the pipeline, outputChan will be nil.*
+	// Finish will be called after the previous stage has finished sending data,
+	// and no more data will be received by this DataProcessor. Often times
+	// Finish can be an empty function implementation, but sometimes it is
+	// necessary to perform final data processing.
 	Finish(outputChan chan data.JSON, killChan chan error)
 }
 
-// ConcurrentPipelineStage is a PipelineStage that also defines
+// ConcurrentDataProcessor is a DataProcessor that also defines
 // a level of concurrency. For example, if Concurrency() returns 2,
-// then the pipeline will allow the stage to execute 2 ProcessData()
+// then the pipeline will allow the stage to execute up to 2 ProcessData()
 // calls concurrently.
 //
-// NOTE: The order of data processing is maintained, meaning that
-// when a stage receives ProcessData calls with d1, d2, ..., the resulting data
+// Note that the order of data processing is maintained, meaning that
+// when a DataProcessor receives ProcessData calls d1, d2, ..., the resulting data
 // payloads sent on the outputChan will be sent in the same order as received.
 type ConcurrentDataProcessor interface {
 	DataProcessor
 	Concurrency() int
 }
 
-// IsConcurrent returns true if the given PipelineStage implements ConcurrentPipelineStage
-func IsConcurrent(p DataProcessor) bool {
-	_, ok := interface{}(p).(DataProcessor)
+// IsConcurrent returns true if the given DataProcessor implements ConcurrentDataProcessor
+func isConcurrent(p DataProcessor) bool {
+	_, ok := interface{}(p).(ConcurrentDataProcessor)
 	return ok
+}
+
+// dataProcessor is a type used internally to the Pipeline management
+// code, and wraps a DataProcessor instance. DataProcessor is the main
+// interface that should be implemented to perform work within the data
+// pipeline, and this dataProcessor type simply embeds it and adds some
+// helpful channel management and other attributes.
+type dataProcessor struct {
+	DataProcessor
+	outputs    []DataProcessor
+	inputChan  chan data.JSON
+	outputChan chan data.JSON
+	brancher   *chanBrancher
+	merger     *chanMerger
+	// ExecutionStat
+	// dataHandler
+	// timer util.Timer
+}
+
+type chanBrancher struct {
+	outputChans []chan data.JSON
+}
+
+func (b *chanBrancher) branchOut(fromChan chan data.JSON) {
+	go func() {
+		for d := range fromChan {
+			for _, out := range b.outputChans {
+				// Make a copy to ensure concurrent stages
+				// can alter data as needed.
+				dc := make(data.JSON, len(d))
+				copy(dc, d)
+				out <- dc
+			}
+		}
+		// Once all data is received, also close all the outputs
+		for _, out := range b.outputChans {
+			logger.Debug(b, "branchOut closing", out)
+			close(out)
+		}
+	}()
+}
+
+type chanMerger struct {
+	inputChans []chan data.JSON
+	sync.WaitGroup
+}
+
+func (m *chanMerger) mergeIn(toChan chan data.JSON) {
+	// Start an output goroutine for each input channel.
+	mergeData := func(c chan data.JSON) {
+		for d := range c {
+			toChan <- d
+		}
+		m.Done()
+	}
+	m.Add(len(m.inputChans))
+	for _, c := range m.inputChans {
+		go mergeData(c)
+	}
+
+	go func() {
+		logger.Debug(m, "mergeIn waiting")
+		m.Wait()
+		logger.Debug(m, "mergeIn closing", toChan)
+		close(toChan)
+	}()
+}
+
+// Do takes a DataProcessor instance and returns the dataProcessor
+// type that will wrap it for internal ratchet processing. The details
+// of the dataProcessor wrapper type are abstracted away from the
+// implementing end-user code. The "Do" function is named
+// succinctly to provide a nicer syntax when creating a PipelineLayout.
+// See the ratchet package documentation for code examples of creating
+// a new branching pipeline layout.
+func Do(processor DataProcessor) *dataProcessor {
+	dp := dataProcessor{DataProcessor: processor}
+	dp.outputChan = make(chan data.JSON)
+	dp.inputChan = make(chan data.JSON)
+	return &dp
+}
+
+// Outputs should be called to specify which DataProcessor instances the current
+// processor should send it's output to. See the ratchet package
+// documentation for code examples and diagrams.
+func (dp *dataProcessor) Outputs(processors ...DataProcessor) *dataProcessor {
+	dp.outputs = processors
+	return dp
+}
+
+// pass through String output to the DataProcessor
+func (dp *dataProcessor) String() string {
+	return fmt.Sprintf("%v", dp.DataProcessor)
 }

@@ -31,7 +31,7 @@ type BigQueryReader struct {
 	AggregateResults bool   // determines whether to send data as soon as available or to aggregate and send all query results, defaults to false
 	UnflattenResults bool   // defaults to false
 	TmpTableName     string // Used when UnflattenResults is true. default to "_ratchet_tmp"
-	ConcurrencyLevel int    // See ConcurrentPipelineStage
+	ConcurrencyLevel int    // See ConcurrentDataProcessor
 }
 
 // BigQueryConfig is used when init'ing new BigQueryReader instances.
@@ -124,7 +124,7 @@ func (r *BigQueryReader) String() string {
 	return "BigQueryReader"
 }
 
-// See ConcurrentPipelineStage
+// See ConcurrentDataProcessor
 func (r *BigQueryReader) Concurrency() int {
 	return r.ConcurrencyLevel
 }

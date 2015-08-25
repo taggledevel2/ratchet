@@ -9,7 +9,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// IoWriter wraps any io.Writer objects.
+// IoWriter wraps any io.Writer object.
 // It can be used to write data out to a File, os.Stdout, or
 // any other task that can be supported via io.Writer.
 type IoWriter struct {

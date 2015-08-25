@@ -2,8 +2,7 @@ package processors
 
 import "github.com/DailyBurn/ratchet/data"
 
-// Passthrough is a stage that simply passes the data on to the
-// next stage.
+// Passthrough simply passes the data on to the next stage.
 type Passthrough struct{}
 
 func NewPassthrough() *Passthrough {

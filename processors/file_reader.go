@@ -7,7 +7,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// FileReader is an initial PipelineStage that reads the given file.
+// FileReader opens and reads the contents of the given filename.
 type FileReader struct {
 	filename string
 }

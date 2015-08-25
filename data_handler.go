@@ -9,11 +9,11 @@ package ratchet
 // )
 //
 // // dataHandler encapsulates the logic around how received data is processed
-// // by a PipelineStage. The majority of code in dataHandler is
-// // specifically related to ConcurrentPipelineStage processing, where
+// // by a See ConcurrentDataProcessor. The majority of code in dataHandler is
+// // specifically related to ConcurrentSee ConcurrentDataProcessor processing, where
 // // data is handled in a queue/pool fashion in multiple goroutines.
 // // If no concurrency is needed, then dataHandler simply calls
-// // PipelineStage's ProcessData without dealing with any concurrency
+// // See ConcurrentDataProcessor's ProcessData without dealing with any concurrency
 // // management.
 // type dataHandler struct {
 // 	concurrency  int
@@ -40,7 +40,7 @@ package ratchet
 // 	return &dataHandler{concurrency: concurrency, workThrottle: make(chan workSignal, concurrency), workList: list.New(), doneChan: make(chan bool), inputClosed: false}
 // }
 //
-// func (dh *dataHandler) processData(stage PipelineStage, d data.JSON, outputChan chan data.JSON, killChan chan error, stat *executionStats) {
+// func (dh *dataHandler) processData(stage See ConcurrentDataProcessor, d data.JSON, outputChan chan data.JSON, killChan chan error, stat *executionStats) {
 // 	logger.Debug("dataHandler: processData", stage, "with concurrency =", dh.concurrency)
 // 	// If no concurrency is needed, simply call stage.ProcessData and return...
 // 	if dh.concurrency <= 1 {

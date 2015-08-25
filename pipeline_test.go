@@ -10,7 +10,7 @@ import (
 )
 
 func ExampleNewPipeline() {
-	// A basic pipeline is created using one or more PipelineStage instances.
+	// A basic pipeline is created using one or more See ConcurrentDataProcessor instances.
 	hello := stages.NewIoReader(strings.NewReader("Hello world!"))
 	stdout := stages.NewIoWriter(os.Stdout)
 	pipeline := ratchet.NewPipeline(hello, stdout)
@@ -25,15 +25,15 @@ func ExampleNewPipeline() {
 }
 
 func ExampleNewBranchingPipeline() {
-	// A branched pipeline is created using slices of PipelineStage instances.
+	// A branched pipeline is created using slices of See ConcurrentDataProcessor instances.
 	hello := stages.NewIoReader(strings.NewReader("Hello world"))
 	hola := stages.NewIoReader(strings.NewReader("Hola mundo"))
 	bonjour := stages.NewIoReader(strings.NewReader("Bonjour monde"))
 	stdout := stages.NewIoWriter(os.Stdout)
 	stdout.AddNewline = true
 
-	stage1 := []ratchet.PipelineStage{hello, hola, bonjour}
-	stage2 := []ratchet.PipelineStage{stdout}
+	stage1 := []ratchet.See ConcurrentDataProcessor{hello, hola, bonjour}
+	stage2 := []ratchet.See ConcurrentDataProcessor{stdout}
 	pipeline := ratchet.NewBranchingPipeline(stage1, stage2)
 
 	err := <-pipeline.Run()

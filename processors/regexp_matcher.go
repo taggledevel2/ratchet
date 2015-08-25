@@ -9,7 +9,7 @@ import (
 )
 
 // RegexpMatcher checks if incoming data matches the given Regexp, and sends
-// it on to the output channel only if it matches.
+// it on to the next stage only if it matches.
 // It is using regexp.Match under the covers: https://golang.org/pkg/regexp/#Match
 type RegexpMatcher struct {
 	pattern string

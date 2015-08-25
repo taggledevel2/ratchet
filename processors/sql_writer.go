@@ -12,20 +12,17 @@ import (
 // specified SQL table. If an error occurs while building
 // or executing the INSERT, the error will be sent to the killChan.
 //
-//
-// Note that the data.JSON must be a valid JSON object
-// (or a slice of valid objects all with the same keys),
-// where the keys are column names and the
-// the values are SQL values to be inserted into those columns.
+// Note that the data.JSON must be a valid JSON object or a slice
+// of valid objects, where the keys are column names and the
+// the values are the SQL values to be inserted into those columns.
 //
 // For use-cases where a SQLWriter instance needs to write to
-// multiple tables (e.g., when the preceding stage is building 2+
-// separate data sets), you can pass in SQLWriterData.
+// multiple tables you can pass in SQLWriterData.
 type SQLWriter struct {
 	writeDB          *sql.DB
 	TableName        string
 	OnDupKeyUpdate   bool
-	ConcurrencyLevel int // See ConcurrentPipelineStage
+	ConcurrencyLevel int // See ConcurrentDataProcessor
 }
 
 // SQLWriterData is a custom data structure you can send into a SQLWriter
@@ -75,7 +72,7 @@ func (s *SQLWriter) String() string {
 	return "SQLWriter"
 }
 
-// See ConcurrentPipelineStage
+// See ConcurrentDataProcessor
 func (s *SQLWriter) Concurrency() int {
 	return s.ConcurrencyLevel
 }

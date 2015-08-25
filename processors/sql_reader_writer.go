@@ -17,7 +17,7 @@ import (
 type SQLReaderWriter struct {
 	SQLReader
 	SQLWriter
-	ConcurrencyLevel int // See ConcurrentPipelineStage
+	ConcurrencyLevel int // See ConcurrentDataProcessor
 }
 
 // NewSQLReaderWriter returns a new SQLReaderWriter ready for static querying.
@@ -50,7 +50,7 @@ func (s *SQLReaderWriter) String() string {
 	return "SQLReaderWriter"
 }
 
-// See ConcurrentPipelineStage
+// See ConcurrentDataProcessor
 func (s *SQLReaderWriter) Concurrency() int {
 	return s.ConcurrencyLevel
 }

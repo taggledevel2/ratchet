@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	LogLevelDebug = iota
-	LogLevelInfo
-	LogLevelError
-	LogLevelStatus
+	LevelDebug = iota
+	LevelInfo
+	LevelError
+	LevelStatus
+	LevelSilent
 )
 
 // RatchetNotifier is an interface for receiving log events. See the
@@ -26,34 +27,34 @@ type RatchetNotifier interface {
 var Notifier RatchetNotifier
 
 // LogLevel can be set to one of:
-// logger.LevelDebug, logger.LevelInfo, logger.LevelError, or logger.LevelStatus
-var LogLevel = LogLevelInfo
+// logger.LevelDebug, logger.LevelInfo, logger.LevelError, logger.LevelStatus, or logger.LevelSilent
+var LogLevel = LevelInfo
 
 var defaultLogger = log.New(os.Stdout, "", log.LstdFlags)
 
 // Debug logs output when LogLevel is set to at least Debug level
 func Debug(v ...interface{}) {
-	logit(LogLevelDebug, v)
+	logit(LevelDebug, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelDebug, nil, v)
+		Notifier.RatchetNotify(LevelDebug, nil, v)
 	}
 }
 
 // Info logs output when LogLevel is set to at least Info level
 func Info(v ...interface{}) {
-	logit(LogLevelInfo, v)
+	logit(LevelInfo, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelInfo, nil, v)
+		Notifier.RatchetNotify(LevelInfo, nil, v)
 	}
 }
 
 // Error logs output when LogLevel is set to at least Error level
 func Error(v ...interface{}) {
-	logit(LogLevelError, v)
+	logit(LevelError, v)
 	if Notifier != nil {
 		trace := make([]byte, 4096)
 		runtime.Stack(trace, true)
-		Notifier.RatchetNotify(LogLevelError, trace, v)
+		Notifier.RatchetNotify(LevelError, trace, v)
 	}
 }
 
@@ -61,18 +62,18 @@ func Error(v ...interface{}) {
 // but doesn't send the stack trace to Notifier. This is useful only when
 // using a RatchetNotifier implementation.
 func ErrorWithoutTrace(v ...interface{}) {
-	logit(LogLevelError, v)
+	logit(LevelError, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelError, nil, v)
+		Notifier.RatchetNotify(LevelError, nil, v)
 	}
 }
 
 // Status logs output when LogLevel is set to at least Status level
 // Status output is high-level status events like stages starting/completing.
 func Status(v ...interface{}) {
-	logit(LogLevelStatus, v)
+	logit(LevelStatus, v)
 	if Notifier != nil {
-		Notifier.RatchetNotify(LogLevelStatus, nil, v)
+		Notifier.RatchetNotify(LevelStatus, nil, v)
 	}
 }
 
