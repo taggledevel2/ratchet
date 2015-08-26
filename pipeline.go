@@ -2,6 +2,7 @@ package ratchet
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -81,14 +82,14 @@ func (p *Pipeline) connectStages() {
 	for _, stage := range p.layout.stages {
 		for _, from := range stage.processors {
 			if from.outputs != nil {
-				from.brancher = &chanBrancher{outputChans: []chan data.JSON{}}
+				from.branchOutChans = []chan data.JSON{}
 				for _, to := range p.dataProcessorOutputs(from) {
-					if to.merger == nil {
-						to.merger = &chanMerger{inputChans: []chan data.JSON{}}
+					if to.mergeInChans == nil {
+						to.mergeInChans = []chan data.JSON{}
 					}
 					c := p.initDataChan()
-					from.brancher.outputChans = append(from.brancher.outputChans, c)
-					to.merger.inputChans = append(to.merger.inputChans, c)
+					from.branchOutChans = append(from.branchOutChans, c)
+					to.mergeInChans = append(to.mergeInChans, c)
 				}
 			}
 		}
@@ -97,11 +98,11 @@ func (p *Pipeline) connectStages() {
 	// between the branchers and mergers
 	for _, stage := range p.layout.stages {
 		for _, dp := range stage.processors {
-			if dp.brancher != nil {
-				dp.brancher.branchOut(dp.outputChan)
+			if dp.branchOutChans != nil {
+				dp.branchOut()
 			}
-			if dp.merger != nil {
-				dp.merger.mergeIn(dp.inputChan)
+			if dp.mergeInChans != nil {
+				dp.mergeIn()
 			}
 		}
 	}
@@ -115,16 +116,17 @@ func (p *Pipeline) runStages(killChan chan error) {
 			go func(n int, dp *dataProcessor) {
 				// This is where the main DataProcessor interface
 				// functions are called.
-				logger.Info(p.Name, ": stage", n+1, "DataProcessor", dp, "waiting to receive data")
+				logger.Info(p.Name, "- stage", n+1, dp, "waiting to receive data")
 				for d := range dp.inputChan {
-					logger.Info(p.Name, ": stage", n+1, "DataProcessor", dp, "received data")
-					logger.Debug(p.Name, ": stage", n+1, "DataProcessor", dp, "data =", string(d))
-					dp.ProcessData(d, dp.outputChan, killChan)
+					logger.Info(p.Name, "- stage", n+1, dp, "received data")
+					logger.Debug(p.Name, "- stage", n+1, dp, "data =", string(d))
+					dp.recordDataReceived(d)
+					dp.processData(d, killChan)
 				}
-				logger.Info(p.Name, ": stage", n+1, "DataProcessor", dp, "input channel closed, calling Finish")
+				logger.Info(p.Name, "- stage", n+1, dp, "input closed, calling Finish")
 				dp.Finish(dp.outputChan, killChan)
 				if dp.outputChan != nil {
-					logger.Info(p.Name, ": stage", n+1, "DataProcessor", dp, "closing output channel")
+					logger.Info(p.Name, "- stage", n+1, dp, "closing output")
 					close(dp.outputChan)
 				}
 				p.wg.Done()
@@ -198,21 +200,20 @@ func handleInterrupt(killChan chan error) {
 	}()
 }
 
-// // Stats returns a string (formatted for output display) listing the stats
-// // gathered for each stage executed.
-// func (p *Pipeline) Stats() string {
-// 	o := fmt.Sprintf("%s: %s\r\n", p.Name, p.timer)
-// 	for i, stages := range p.Stages {
-// 		o += fmt.Sprintf("Stage %d)\r\n", i+1)
-// 		for j, stage := range stages {
-// 			o += fmt.Sprintf("  * %v\r\n", stage)
-// 			stat := p.stats[i][j]
-// 			stat.calculate()
-// 			o += fmt.Sprintf("     - Total/Avg Execution Time = %f/%fs\r\n", stat.totalExecutionTime, stat.avgExecutionTime)
-// 			o += fmt.Sprintf("     - Payloads Sent/Received = %d/%d\r\n", stat.dataSentCounter, stat.dataReceivedCounter)
-// 			o += fmt.Sprintf("     - Total/Avg Bytes Sent = %d/%d\r\n", stat.totalBytesSent, stat.avgBytesSent)
-// 			o += fmt.Sprintf("     - Total/Avg Bytes Received = %d/%d\r\n", stat.totalBytesReceived, stat.avgBytesReceived)
-// 		}
-// 	}
-// 	return o
-// }
+// Stats returns a string (formatted for output display) listing the stats
+// gathered for each stage executed.
+func (p *Pipeline) Stats() string {
+	o := fmt.Sprintf("%s: %s\r\n", p.Name, p.timer)
+	for n, stage := range p.layout.stages {
+		o += fmt.Sprintf("Stage %d)\r\n", n+1)
+		for _, dp := range stage.processors {
+			o += fmt.Sprintf("  * %v\r\n", dp)
+			dp.executionStat.calculate()
+			o += fmt.Sprintf("     - Total/Avg Execution Time = %f/%fs\r\n", dp.totalExecutionTime, dp.avgExecutionTime)
+			o += fmt.Sprintf("     - Payloads Sent/Received = %d/%d\r\n", dp.dataSentCounter, dp.dataReceivedCounter)
+			o += fmt.Sprintf("     - Total/Avg Bytes Sent = %d/%d\r\n", dp.totalBytesSent, dp.avgBytesSent)
+			o += fmt.Sprintf("     - Total/Avg Bytes Received = %d/%d\r\n", dp.totalBytesReceived, dp.avgBytesReceived)
+		}
+	}
+	return o
+}

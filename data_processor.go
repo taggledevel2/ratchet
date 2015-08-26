@@ -1,11 +1,11 @@
 package ratchet
 
 import (
+	"container/list"
 	"fmt"
 	"sync"
 
 	"github.com/DailyBurn/ratchet/data"
-	"github.com/DailyBurn/ratchet/logger"
 )
 
 // DataProcessor is the interface that should be implemented to perform data-related
@@ -25,25 +25,6 @@ type DataProcessor interface {
 	Finish(outputChan chan data.JSON, killChan chan error)
 }
 
-// ConcurrentDataProcessor is a DataProcessor that also defines
-// a level of concurrency. For example, if Concurrency() returns 2,
-// then the pipeline will allow the stage to execute up to 2 ProcessData()
-// calls concurrently.
-//
-// Note that the order of data processing is maintained, meaning that
-// when a DataProcessor receives ProcessData calls d1, d2, ..., the resulting data
-// payloads sent on the outputChan will be sent in the same order as received.
-type ConcurrentDataProcessor interface {
-	DataProcessor
-	Concurrency() int
-}
-
-// IsConcurrent returns true if the given DataProcessor implements ConcurrentDataProcessor
-func isConcurrent(p DataProcessor) bool {
-	_, ok := interface{}(p).(ConcurrentDataProcessor)
-	return ok
-}
-
 // dataProcessor is a type used internally to the Pipeline management
 // code, and wraps a DataProcessor instance. DataProcessor is the main
 // interface that should be implemented to perform work within the data
@@ -51,62 +32,59 @@ func isConcurrent(p DataProcessor) bool {
 // helpful channel management and other attributes.
 type dataProcessor struct {
 	DataProcessor
+	executionStat
+	concurrentDataProcessor
+	chanBrancher
+	chanMerger
 	outputs    []DataProcessor
 	inputChan  chan data.JSON
 	outputChan chan data.JSON
-	brancher   *chanBrancher
-	merger     *chanMerger
-	// ExecutionStat
-	// dataHandler
-	// timer util.Timer
 }
 
 type chanBrancher struct {
-	outputChans []chan data.JSON
+	branchOutChans []chan data.JSON
 }
 
-func (b *chanBrancher) branchOut(fromChan chan data.JSON) {
+func (dp *dataProcessor) branchOut() {
 	go func() {
-		for d := range fromChan {
-			for _, out := range b.outputChans {
+		for d := range dp.outputChan {
+			for _, out := range dp.branchOutChans {
 				// Make a copy to ensure concurrent stages
 				// can alter data as needed.
 				dc := make(data.JSON, len(d))
 				copy(dc, d)
 				out <- dc
 			}
+			dp.recordDataSent(d)
 		}
 		// Once all data is received, also close all the outputs
-		for _, out := range b.outputChans {
-			logger.Debug(b, "branchOut closing", out)
+		for _, out := range dp.branchOutChans {
 			close(out)
 		}
 	}()
 }
 
 type chanMerger struct {
-	inputChans []chan data.JSON
-	sync.WaitGroup
+	mergeInChans []chan data.JSON
+	mergeWait    sync.WaitGroup
 }
 
-func (m *chanMerger) mergeIn(toChan chan data.JSON) {
-	// Start an output goroutine for each input channel.
+func (dp *dataProcessor) mergeIn() {
+	// Start a merge goroutine for each input channel.
 	mergeData := func(c chan data.JSON) {
 		for d := range c {
-			toChan <- d
+			dp.inputChan <- d
 		}
-		m.Done()
+		dp.mergeWait.Done()
 	}
-	m.Add(len(m.inputChans))
-	for _, c := range m.inputChans {
-		go mergeData(c)
+	dp.mergeWait.Add(len(dp.mergeInChans))
+	for _, in := range dp.mergeInChans {
+		go mergeData(in)
 	}
 
 	go func() {
-		logger.Debug(m, "mergeIn waiting")
-		m.Wait()
-		logger.Debug(m, "mergeIn closing", toChan)
-		close(toChan)
+		dp.mergeWait.Wait()
+		close(dp.inputChan)
 	}()
 }
 
@@ -121,6 +99,15 @@ func Do(processor DataProcessor) *dataProcessor {
 	dp := dataProcessor{DataProcessor: processor}
 	dp.outputChan = make(chan data.JSON)
 	dp.inputChan = make(chan data.JSON)
+
+	if isConcurrent(processor) {
+		dp.concurrency = processor.(ConcurrentDataProcessor).Concurrency()
+		dp.workThrottle = make(chan workSignal, dp.concurrency)
+		dp.workList = list.New()
+		dp.doneChan = make(chan bool)
+		dp.inputClosed = false
+	}
+
 	return &dp
 }
 
