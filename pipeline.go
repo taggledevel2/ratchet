@@ -119,7 +119,9 @@ func (p *Pipeline) runStages(killChan chan error) {
 				logger.Info(p.Name, "- stage", n+1, dp, "waiting to receive data")
 				for d := range dp.inputChan {
 					logger.Info(p.Name, "- stage", n+1, dp, "received data")
-					logger.Debug(p.Name, "- stage", n+1, dp, "data =", string(d))
+					if p.PrintData {
+						logger.Debug(p.Name, "- stage", n+1, dp, "data =", string(d))
+					}
 					dp.recordDataReceived(d)
 					dp.processData(d, killChan)
 				}

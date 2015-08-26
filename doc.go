@@ -28,17 +28,17 @@ work on that data, and the third stage branches into 2 DataProcessors, one
 writing the resulting data to a CSV file, and the other inserting into another
 SQL database.
 
-Since each DataProcessor is running in it's own goroutine, SQLReader can continue pulling and sending
-data while each subsequent stage is also processing data. Optimally-designed pipelines
-have processors that can each run in an isolated fashion, processing data without having
-to worry about what's coming next down the pipeline.
-
 In the example above, Stage 1 and Stage 3 are using built-in DataProcessors
 (see the "processors" package/subdirectory). However, Stage 2 is using a custom
 implementation of DataProcessor. By using a combination of built-in processors,
 and supporting the writing of any Go code to process data, Ratchet makes
 it possible to write very custom and fast data pipeline systems. See the
 DataProcessor documentation to learn more.
+
+Since each DataProcessor is running in it's own goroutine, SQLReader can continue pulling and sending
+data while each subsequent stage is also processing data. Optimally-designed pipelines
+have processors that can each run in an isolated fashion, processing data without having
+to worry about what's coming next down the pipeline.
 
 All data payloads sent between DataProcessors are of type data.JSON ([]byte). This provides
 a good balance of consistency and flexibility. See the "data" package for details
