@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"bufio"
@@ -9,7 +9,7 @@ import (
 )
 
 // CSVTransformer converts data.JSON objects into a CSV string object
-// and sends it on to the next PipelineStage. In use-cases where
+// and sends it on to the next stage. In use-cases where
 // you simply want to write to a CSV file, use CSVWriter instead.
 //
 // CSVTransformer is for more complex use-cases where you need to
@@ -59,9 +59,6 @@ func (w *CSVTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 }
 
 func (w *CSVTransformer) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (w *CSVTransformer) String() string {

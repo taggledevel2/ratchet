@@ -6,7 +6,7 @@ import (
 	"github.com/DailyBurn/ratchet/data"
 )
 
-type executionStats struct {
+type executionStat struct {
 	dataSentCounter     int
 	dataReceivedCounter int
 	executionsCounter   int
@@ -18,24 +18,24 @@ type executionStats struct {
 	avgBytesSent        int
 }
 
-func (s *executionStats) recordExecution(foo func()) {
+func (s *executionStat) recordExecution(foo func()) {
 	s.executionsCounter++
 	st := time.Now()
 	foo()
 	s.totalExecutionTime += time.Now().Sub(st).Seconds()
 }
 
-func (s *executionStats) recordDataSent(d data.JSON) {
+func (s *executionStat) recordDataSent(d data.JSON) {
 	s.dataSentCounter++
 	s.totalBytesSent += len(d)
 }
 
-func (s *executionStats) recordDataReceived(d data.JSON) {
+func (s *executionStat) recordDataReceived(d data.JSON) {
 	s.dataReceivedCounter++
 	s.totalBytesReceived += len(d)
 }
 
-func (s *executionStats) calculate() {
+func (s *executionStat) calculate() {
 	if s.executionsCounter > 0 {
 		s.avgExecutionTime = (s.totalExecutionTime / float64(s.executionsCounter))
 	}

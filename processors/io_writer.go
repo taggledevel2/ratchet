@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// IoWriter wraps any io.Writer objects.
+// IoWriter wraps any io.Writer object.
 // It can be used to write data out to a File, os.Stdout, or
 // any other task that can be supported via io.Writer.
 type IoWriter struct {
@@ -35,9 +35,6 @@ func (w *IoWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan 
 }
 
 func (w *IoWriter) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (w *IoWriter) String() string {

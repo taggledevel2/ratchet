@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"database/sql"
@@ -9,7 +9,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// SQLReader runs the given SQL and passes the resulting Data
+// SQLReader runs the given SQL and passes the resulting data
 // to the next stage of processing.
 //
 // It can operate in 2 modes:
@@ -25,7 +25,7 @@ type SQLReader struct {
 	sqlGenerator      func(data.JSON) (string, error)
 	BatchSize         int
 	StructDestination interface{}
-	ConcurrencyLevel  int // See ConcurrentPipelineStage
+	ConcurrencyLevel  int // See ConcurrentDataProcessor
 }
 
 type dataErr struct {
@@ -83,14 +83,13 @@ func (s *SQLReader) ForEachQueryData(d data.JSON, killChan chan error, forEach f
 
 // Finish - see interface for documentation.
 func (s *SQLReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (s *SQLReader) String() string {
 	return "SQLReader"
 }
 
-// See ConcurrentPipelineStage
+// See ConcurrentDataProcessor
 func (s *SQLReader) Concurrency() int {
 	return s.ConcurrencyLevel
 }

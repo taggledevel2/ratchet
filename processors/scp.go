@@ -1,35 +1,34 @@
-package stages
+package processors
 
 import (
 	"fmt"
+	"os/exec"
+
 	"github.com/DailyBurn/ratchet/data"
 	"github.com/DailyBurn/ratchet/util"
-	"os/exec"
 )
 
-type Scp struct {
+// SCP executes the scp command, sending the given file to the given destination.
+type SCP struct {
 	Port        string
 	Object      string
 	Destination string
 	// command     *exec.Cmd
 }
 
-func NewScp(obj string, destination string) *Scp {
-	return &Scp{Object: obj, Destination: destination}
+func NewSCP(obj string, destination string) *SCP {
+	return &SCP{Object: obj, Destination: destination}
 }
 
-func (s *Scp) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+func (s *SCP) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
 	outputChan <- d
 }
 
-func (s *Scp) Finish(outputChan chan data.JSON, killChan chan error) {
+func (s *SCP) Finish(outputChan chan data.JSON, killChan chan error) {
 	s.Run(killChan)
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
-func (s *Scp) Run(killChan chan error) {
+func (s *SCP) Run(killChan chan error) {
 	scpParams := []string{}
 	if s.Port != "" {
 		scpParams = append(scpParams, fmt.Sprintf("-P %v", s.Port))

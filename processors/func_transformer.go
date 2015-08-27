@@ -1,16 +1,16 @@
-package stages
+package processors
 
 import "github.com/DailyBurn/ratchet/data"
 
-// FuncTransformer is a stage that executes the given function on each data
-// payload, sending the resuling data to the next stage of processing.
+// FuncTransformer executes the given function on each data
+// payload, sending the resuling data to the next stage.
 //
 // While FuncTransformer is useful for simple data transformation, more
-// complicated tasks justify building a custom implementation of PipelineStage.
+// complicated tasks justify building a custom implementation of DataProcessor.
 type FuncTransformer struct {
 	transform        func(d data.JSON) data.JSON
 	Name             string // can be set for more useful log output
-	ConcurrencyLevel int    // See ConcurrentPipelineStage
+	ConcurrencyLevel int    // See ConcurrentDataProcessor
 }
 
 func NewFuncTransformer(transform func(d data.JSON) data.JSON) *FuncTransformer {
@@ -22,9 +22,6 @@ func (t *FuncTransformer) ProcessData(d data.JSON, outputChan chan data.JSON, ki
 }
 
 func (t *FuncTransformer) Finish(outputChan chan data.JSON, killChan chan error) {
-	if outputChan != nil {
-		close(outputChan)
-	}
 }
 
 func (t *FuncTransformer) String() string {
@@ -34,7 +31,7 @@ func (t *FuncTransformer) String() string {
 	return "FuncTransformer"
 }
 
-// See ConcurrentPipelineStage
+// See ConcurrentSee ConcurrentDataProcessor
 func (t *FuncTransformer) Concurrency() int {
 	return t.ConcurrencyLevel
 }

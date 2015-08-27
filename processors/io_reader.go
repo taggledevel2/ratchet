@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"bufio"
@@ -8,15 +8,14 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// IoReader is a simple pipeline stage that wraps an io.Reader.
-// It will typically be used as a starting stage in a pipeline.
+// IoReader wraps an io.Reader and reads it.
 type IoReader struct {
 	Reader     io.Reader
 	LineByLine bool // defaults to true
 	BufferSize int
 }
 
-// NewIoReader returns a new IoReader wrapping the given io.Reader object
+// NewIoReader returns a new IoReader wrapping the given io.Reader object.
 func NewIoReader(reader io.Reader) *IoReader {
 	return &IoReader{Reader: reader, LineByLine: true, BufferSize: 1024}
 }
@@ -28,7 +27,6 @@ func (r *IoReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan 
 }
 
 func (r *IoReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (r *IoReader) ForEachData(killChan chan error, foo func(d data.JSON)) {

@@ -1,6 +1,5 @@
-// Package data holds custom types and functions for passing objects
-// between ratchet stages. All output channels in ratchet starters and
-// and stages are of type Data.
+// Package data holds custom types and functions for passing JSON
+// between ratchet stages.
 package data
 
 import (
@@ -11,10 +10,8 @@ import (
 	"github.com/DailyBurn/ratchet/logger"
 )
 
-// JSON is the generic type that is passed along data channels.
-// Under the covers, Data is simply a []byte containing JSON data.
-// The Data primitive is kept intentionally vague so in future updates
-// marshallable types other than JSON can be used as well.
+// JSON is the data type that is passed along all data channels.
+// Under the covers, JSON is simply a []byte containing JSON data.
 type JSON []byte
 
 // NewJSON is a simple wrapper for json.Marshal.

@@ -1,4 +1,4 @@
-package stages
+package processors
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"github.com/DailyBurn/ratchet/util"
 )
 
-// FileReader is an initial PipelineStage that reads the given file.
+// FileReader opens and reads the contents of the given filename.
 type FileReader struct {
 	filename string
 }
@@ -26,7 +26,6 @@ func (r *FileReader) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 }
 
 func (r *FileReader) Finish(outputChan chan data.JSON, killChan chan error) {
-	close(outputChan)
 }
 
 func (r *FileReader) String() string {
