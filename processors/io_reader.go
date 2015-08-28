@@ -2,6 +2,7 @@ package processors
 
 import (
 	"bufio"
+	"compress/gzip"
 	"io"
 
 	"github.com/DailyBurn/ratchet/data"
@@ -13,6 +14,7 @@ type IoReader struct {
 	Reader     io.Reader
 	LineByLine bool // defaults to true
 	BufferSize int
+	Gzipped    bool
 }
 
 // NewIoReader returns a new IoReader wrapping the given io.Reader object.
@@ -21,6 +23,11 @@ func NewIoReader(reader io.Reader) *IoReader {
 }
 
 func (r *IoReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
+	if r.Gzipped {
+		gzReader, err := gzip.NewReader(r.Reader)
+		util.KillPipelineIfErr(err, killChan)
+		r.Reader = gzReader
+	}
 	r.ForEachData(killChan, func(d data.JSON) {
 		outputChan <- d
 	})
