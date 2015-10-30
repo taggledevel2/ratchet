@@ -3,18 +3,9 @@
 	"GoVersion": "go1.5.1",
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/goauth2/oauth",
-			"Comment": "weekly-43",
-			"Rev": "d4571a95014ff1fdd0055dc0f6b7e977a42b1e5a"
-		},
-		{
 			"ImportPath": "github.com/DailyBurn/bigquery/client",
-			"Comment": "preupdate-3-gbfeaa34",
-			"Rev": "bfeaa34bd88a8f7ec36e37b8296169aa685fe1a4"
-		},
-		{
-			"ImportPath": "github.com/DailyBurn/ratchet",
-			"Rev": "31b9ee91db1632290b052d0ca54f73532d3f1302"
+			"Comment": "0.0.1-6-gf82f969",
+			"Rev": "f82f9695e8fd6eebebba1e21a3bf77d6d044ab9a"
 		},
 		{
 			"ImportPath": "github.com/Dailyburn/google-api-go-client-bigquery/bigquery/v2",
@@ -71,11 +62,23 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "1bc0720082d79ce7ffc6ef6e523d00d46b0dee45"
+			"Rev": "21c3935a8fc0f954d03e6b8a560c9600ffee38d2"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "038cb4adce85ed41e285c2e7cc6221a92bfa44aa"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
 			"Rev": "0a735f7ec81c85ce7ec31bf7a67e125ef62266ec"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/compute/metadata",
+			"Rev": "6f59fbd92e76d22a49bc08c630337a8309d73f15"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/internal",
+			"Rev": "6f59fbd92e76d22a49bc08c630337a8309d73f15"
 		}
 	]
 }

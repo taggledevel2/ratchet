@@ -36,12 +36,9 @@ type BigQueryReader struct {
 
 // BigQueryConfig is used when init'ing new BigQueryReader instances.
 type BigQueryConfig struct {
-	PemPath             string
-	Secret              string
-	AccountEmailAddress string
-	AccountClientID     string
-	ProjectID           string
-	DatasetID           string
+	JsonPemPath string
+	ProjectID   string
+	DatasetID   string
 }
 
 // NewBigQueryReader returns an instance of a BigQueryExtractor ready to
@@ -133,9 +130,9 @@ func (r *BigQueryReader) bqClient() *bigquery.Client {
 	if r.client == nil {
 		if r.UnflattenResults {
 			tmpTable := r.TmpTableName
-			r.client = bigquery.New(r.config.PemPath, r.config.AccountEmailAddress, r.config.AccountClientID, r.config.Secret, bigquery.AllowLargeResults(true, tmpTable, false))
+			r.client = bigquery.New(r.config.JsonPemPath, bigquery.AllowLargeResults(true, tmpTable, false))
 		} else {
-			r.client = bigquery.New(r.config.PemPath, r.config.AccountEmailAddress, r.config.AccountClientID, r.config.Secret)
+			r.client = bigquery.New(r.config.JsonPemPath)
 		}
 		r.client.PrintDebug = false
 	}

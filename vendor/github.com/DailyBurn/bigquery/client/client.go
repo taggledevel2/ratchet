@@ -3,13 +3,15 @@ package client
 import (
 	"errors"
 	"fmt"
+
 	"io/ioutil"
-	"net/http"
 	"strconv"
 	"time"
 
-	"code.google.com/p/goauth2/oauth"
-	"code.google.com/p/goauth2/oauth/jwt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	//"code.google.com/p/goauth2/oauth"
+	//"code.google.com/p/goauth2/oauth/jwt"
 	bigquery "github.com/Dailyburn/google-api-go-client-bigquery/bigquery/v2"
 )
 
@@ -20,16 +22,13 @@ const defaultPageSize = 5000
 
 // Client a big query client instance
 type Client struct {
-	accountEmailAddress string
-	userAccountClientID string
-	clientSecret        string
-	pemPath             string
-	token               *oauth.Token
-	service             *bigquery.Service
-	allowLargeResults   bool
-	tempTableName       string
-	flattenResults      bool
-	PrintDebug          bool
+	pemPath           string
+	token             *oauth2.Token
+	service           *bigquery.Service
+	allowLargeResults bool
+	tempTableName     string
+	flattenResults    bool
+	PrintDebug        bool
 }
 
 // Data is a containing type used for Async data response handling including Headers, Rows and an Error that will be populated in the event of an Error querying
@@ -40,8 +39,11 @@ type Data struct {
 }
 
 // New instantiates a new client with the given params and return a reference to it
-func New(pemPath, serviceAccountEmailAddress, serviceUserAccountClientID, clientSecret string, options ...func(*Client) error) *Client {
-	c := Client{pemPath: pemPath, clientSecret: clientSecret, accountEmailAddress: serviceAccountEmailAddress, userAccountClientID: serviceUserAccountClientID}
+func New(pemPath string, options ...func(*Client) error) *Client {
+	c := Client{
+		pemPath: pemPath,
+	}
+
 	c.PrintDebug = false
 
 	for _, option := range options {
@@ -78,42 +80,23 @@ func (c *Client) setAllowLargeResults(shouldAllow bool, tempTableName string, fl
 // connect - opens a new connection to bigquery, reusing the token if possible or regenerating a new auth token if required
 func (c *Client) connect() (*bigquery.Service, error) {
 	if c.token != nil {
-		if !c.token.Expired() && c.service != nil {
+		if !c.token.Valid() && c.service != nil {
 			return c.service, nil
 		}
 	}
 
 	// generate auth token and create service object
-	authScope := bigquery.BigqueryScope
+	//authScope := bigquery.BigqueryScope
 	pemKeyBytes, err := ioutil.ReadFile(c.pemPath)
 	if err != nil {
 		panic(err)
 	}
 
-	t := jwt.NewToken(c.accountEmailAddress, bigquery.BigqueryScope, pemKeyBytes)
-
-	httpClient := &http.Client{}
-	token, err := t.Assert(httpClient)
-	if err != nil {
-		return nil, err
-	}
-
-	c.token = token
-
-	config := &oauth.Config{
-		ClientId:     c.userAccountClientID,
-		ClientSecret: c.clientSecret,
-		Scope:        authScope,
-		AuthURL:      authURL,
-		TokenURL:     tokenURL,
-	}
-
-	transport := &oauth.Transport{
-		Token:  token,
-		Config: config,
-	}
-
-	client := transport.Client()
+	t, err := google.JWTConfigFromJSON(
+		pemKeyBytes,
+		"https://www.googleapis.com/auth/bigquery")
+	//t := jwt.NewToken(c.accountEmailAddress, bigquery.BigqueryScope, pemKeyBytes)
+	client := t.Client(oauth2.NoContext)
 
 	service, err := bigquery.New(client)
 	if err != nil {
