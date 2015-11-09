@@ -114,19 +114,7 @@ func (c *Client) InsertRow(projectID, datasetID, tableID string, rowData map[str
 		return err
 	}
 
-	// convert to the custom type bigquery lib wants
-	jsonData := make(map[string]bigquery.JsonValue)
-	for k, v := range rowData {
-		jsonData[k] = bigquery.JsonValue(v)
-	}
-
-	rows := []*bigquery.TableDataInsertAllRequestRows{
-		{
-			Json: jsonData,
-		},
-	}
-
-	insertRequest := &bigquery.TableDataInsertAllRequest{Rows: rows}
+	insertRequest := buildBigQueryInsertRequest([]map[string]interface{}{rowData})
 
 	result, err := service.Tabledata.InsertAll(projectID, datasetID, tableID, insertRequest).Do()
 	if err != nil {
@@ -139,6 +127,43 @@ func (c *Client) InsertRow(projectID, datasetID, tableID string, rowData map[str
 	}
 
 	return nil
+}
+
+func (c *Client) InsertRows(projectID, datasetID, tableID string, rows []map[string]interface{}) error {
+	service, err := c.connect()
+	if err != nil {
+		return err
+	}
+
+	insertRequest := buildBigQueryInsertRequest(rows)
+	result, err := service.Tabledata.InsertAll(projectID, datasetID, tableID, insertRequest).Do()
+	if err != nil {
+		c.printDebug("Error inserting rows: ", err)
+		return err
+	}
+
+	if len(result.InsertErrors) > 0 {
+		return errors.New("Error inserting rows")
+	}
+
+	return nil
+}
+
+func buildBigQueryInsertRequest(rows []map[string]interface{}) *bigquery.TableDataInsertAllRequest {
+	requestRows := []*bigquery.TableDataInsertAllRequestRows{}
+	for _, row := range rows {
+		requestRows = append(requestRows, &bigquery.TableDataInsertAllRequestRows{Json: rowToBigQueryJSON(row)})
+	}
+	return &bigquery.TableDataInsertAllRequest{Rows: requestRows}
+}
+
+func rowToBigQueryJSON(row map[string]interface{}) map[string]bigquery.JsonValue {
+	// convert to the custom type bigquery lib wants
+	jsonData := make(map[string]bigquery.JsonValue)
+	for k, v := range row {
+		jsonData[k] = bigquery.JsonValue(v)
+	}
+	return jsonData
 }
 
 // AsyncQuery loads the data by paging through the query results and sends back payloads over the dataChan - dataChan sends a payload containing Data objects made up of the headers, rows and an error attribute
