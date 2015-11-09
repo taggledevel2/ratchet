@@ -30,7 +30,7 @@ func (w *BigQueryWriter) ProcessData(d data.JSON, outputChan chan data.JSON, kil
 	queuedRows, err := data.ObjectsFromJSON(d)
 	util.KillPipelineIfErr(err, killChan)
 
-	logger.Debug("BigQueryWriter: Writing -", len(queuedRows))
+	logger.Info("BigQueryWriter: Writing -", len(queuedRows))
 	err = w.WriteBatch(queuedRows)
 	if err != nil {
 		util.KillPipelineIfErr(err, killChan)
