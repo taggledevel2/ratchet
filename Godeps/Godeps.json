@@ -8,6 +8,11 @@
 			"Rev": "866838f4afba2e72754ea04c5c45156141fe0c6c"
 		},
 		{
+			"ImportPath": "github.com/DailyBurn/ratchet",
+			"Comment": "1.0.0-9-g69de81d",
+			"Rev": "69de81d3292a6c9d94827ecbd1852c5de04e2e27"
+		},
+		{
 			"ImportPath": "github.com/Dailyburn/google-api-go-client-bigquery/bigquery/v2",
 			"Comment": "preupdate-2-g5e46123",
 			"Rev": "5e46123b792170934677aa4ab30bd3c37546f5fb"
@@ -57,8 +62,24 @@
 			"Rev": "95b95639239be07d091748628808b8e364e505e7"
 		},
 		{
+			"ImportPath": "github.com/kr/fs",
+			"Rev": "2788f0dbd16903de03cb8186e5c7d97b69ad387b"
+		},
+		{
+			"ImportPath": "github.com/pkg/sftp",
+			"Rev": "e09e01e6e10971840f7639df3dd747e6fd2dff3a"
+		},
+		{
 			"ImportPath": "github.com/vaughan0/go-ini",
 			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/curve25519",
+			"Rev": "575fdbe86e5dd89229707ebec0575ce7d088a4a6"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "575fdbe86e5dd89229707ebec0575ce7d088a4a6"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
