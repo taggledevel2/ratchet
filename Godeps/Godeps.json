@@ -8,11 +8,6 @@
 			"Rev": "866838f4afba2e72754ea04c5c45156141fe0c6c"
 		},
 		{
-			"ImportPath": "github.com/DailyBurn/ratchet",
-			"Comment": "1.0.0-9-g69de81d",
-			"Rev": "69de81d3292a6c9d94827ecbd1852c5de04e2e27"
-		},
-		{
 			"ImportPath": "github.com/Dailyburn/google-api-go-client-bigquery/bigquery/v2",
 			"Comment": "preupdate-2-g5e46123",
 			"Rev": "5e46123b792170934677aa4ab30bd3c37546f5fb"
