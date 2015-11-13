@@ -3,7 +3,9 @@ package processors
 import "github.com/DailyBurn/ratchet/data"
 
 // Passthrough simply passes the data on to the next stage.
-type Passthrough struct{}
+type Passthrough struct {
+	i int // setting a placeholder field - if we leave this as an empty struct we get some properties for comparison and memory addressing that are not desirable and cause comparison bugs (see: http://dave.cheney.net/2014/03/25/the-empty-struct)
+}
 
 func NewPassthrough() *Passthrough {
 	return &Passthrough{}
