@@ -25,11 +25,12 @@ type parameters struct {
 	path     string
 }
 
-// NewSftpWriter instantiates a new writer and opens a connection to the remote server creating the file referenced in the path
+// NewSftpWriter instantiates a new sftp writer, a connection to the remote server is delayed until data is recv'd by the writer
 func NewSftpWriter(server, username, password, path string) *SftpWriter {
 	return &SftpWriter{params: &parameters{server, username, password, path}, initialized: false}
 }
 
+// init calls connect and then creates the output file on the sftp server specified at the path specified
 func (w *SftpWriter) init(killChan chan error) {
 	c := connect(w.params.server, w.params.username, w.params.password, killChan)
 
@@ -71,7 +72,10 @@ func (w *SftpWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 	if !w.initialized {
 		w.init(killChan)
 	}
-	w.file.Write([]byte(d))
+	_, e := w.file.Write([]byte(d))
+	if e != nil {
+		util.KillPipelineIfErr(e, killChan)
+	}
 }
 
 // Finish closes open references to the remote file and server
