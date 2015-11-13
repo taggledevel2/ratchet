@@ -3,12 +3,12 @@ package processors
 // http://docs.aws.amazon.com/sdk-for-go/api/service/s3/S3.html
 
 import (
-	"github.com/DailyBurn/ratchet/data"
-	"github.com/DailyBurn/ratchet/logger"
-	"github.com/DailyBurn/ratchet/util"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/dailyburn/ratchet/data"
+	"github.com/dailyburn/ratchet/logger"
+	"github.com/dailyburn/ratchet/util"
 )
 
 // S3Reader handles retrieving objects from S3. Use NewS3ObjectReader to read

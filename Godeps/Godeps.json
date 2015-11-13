@@ -1,14 +1,14 @@
 {
-	"ImportPath": "github.com/Dailyburn/ratchet",
+	"ImportPath": "github.com/dailyburn/ratchet",
 	"GoVersion": "go1.5.1",
 	"Deps": [
 		{
-			"ImportPath": "github.com/DailyBurn/bigquery/client",
+			"ImportPath": "github.com/dailyburn/bigquery/client",
 			"Comment": "0.0.1-14-g866838f",
 			"Rev": "866838f4afba2e72754ea04c5c45156141fe0c6c"
 		},
 		{
-			"ImportPath": "github.com/Dailyburn/google-api-go-client-bigquery/bigquery/v2",
+			"ImportPath": "github.com/dailyburn/google-api-go-client-bigquery/bigquery/v2",
 			"Comment": "preupdate-2-g5e46123",
 			"Rev": "5e46123b792170934677aa4ab30bd3c37546f5fb"
 		},

@@ -1,9 +1,9 @@
 package util
 
 import (
-	"github.com/DailyBurn/ratchet/logger"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/dailyburn/ratchet/logger"
 )
 
 // ListS3Objects returns all object keys matching the given prefix. Note that

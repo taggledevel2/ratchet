@@ -17,9 +17,9 @@ Each data processor is receiving, processing, and then sending data to the next 
 ## Getting Started
 
 - Get Ratchet:
-      go get github.com/DailyBurn/ratchet
+      go get github.com/dailyburn/ratchet
 - Check out the full Godoc reference:
- [![GoDoc](https://godoc.org/github.com/DailyBurn/ratchet?status.svg)](https://godoc.org/github.com/DailyBurn/ratchet)
+ [![GoDoc](https://godoc.org/github.com/dailyburn/ratchet?status.svg)](https://godoc.org/github.com/dailyburn/ratchet)
 
 While not necessary, it may be helpful to understand
 some of the pipeline concepts used within Ratchet's internals: https://blog.golang.org/pipelines

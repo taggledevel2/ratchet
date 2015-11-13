@@ -1,6 +1,6 @@
 package client
 
-import bigquery "github.com/Dailyburn/google-api-go-client-bigquery/bigquery/v2"
+import bigquery "github.com/dailyburn/google-api-go-client-bigquery/bigquery/v2"
 
 // InsertNewTable creates a new empty table for the given project and dataset with the field name/types defined in the fields map
 func (c *Client) InsertNewTable(projectId, datasetId, tableName string, fields map[string]string) error {

@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 
-	"github.com/DailyBurn/ratchet/data"
-	"github.com/DailyBurn/ratchet/util"
+	"github.com/dailyburn/ratchet/data"
+	"github.com/dailyburn/ratchet/util"
 )
 
 // CSVTransformer converts data.JSON objects into a CSV string object

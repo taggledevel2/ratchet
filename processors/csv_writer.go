@@ -3,8 +3,8 @@ package processors
 import (
 	"io"
 
-	"github.com/DailyBurn/ratchet/data"
-	"github.com/DailyBurn/ratchet/util"
+	"github.com/dailyburn/ratchet/data"
+	"github.com/dailyburn/ratchet/util"
 )
 
 // CSVWriter is handles converting data.JSON objects into CSV format,

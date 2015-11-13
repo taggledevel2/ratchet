@@ -5,8 +5,8 @@ import (
 	"compress/gzip"
 	"io"
 
-	"github.com/DailyBurn/ratchet/data"
-	"github.com/DailyBurn/ratchet/util"
+	"github.com/dailyburn/ratchet/data"
+	"github.com/dailyburn/ratchet/util"
 )
 
 // IoReader wraps an io.Reader and reads it.

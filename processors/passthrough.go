@@ -1,6 +1,6 @@
 package processors
 
-import "github.com/DailyBurn/ratchet/data"
+import "github.com/dailyburn/ratchet/data"
 
 // Passthrough simply passes the data on to the next stage.
 type Passthrough struct {

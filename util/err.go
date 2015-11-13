@@ -1,6 +1,6 @@
 package util
 
-import "github.com/DailyBurn/ratchet/logger"
+import "github.com/dailyburn/ratchet/logger"
 
 // KillPipelineIfErr is an error-checking helper.
 func KillPipelineIfErr(err error, killChan chan error) {
