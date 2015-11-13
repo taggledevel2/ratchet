@@ -167,6 +167,21 @@ func sendErr(err error, dataChan chan data.JSON) {
 	dataChan <- []byte(`{"Error":"` + err.Error() + `"}`)
 }
 
+func DeleteDataViaSQLQuery(db *sql.DB, query string) error {
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Query()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SQLInsertData abstracts building and executing a SQL INSERT
 // statement for the given Data object.
 //
