@@ -167,14 +167,14 @@ func sendErr(err error, dataChan chan data.JSON) {
 	dataChan <- []byte(`{"Error":"` + err.Error() + `"}`)
 }
 
-func DeleteDataViaSQLQuery(db *sql.DB, query string) error {
+func ExecuteSQLQuery(db *sql.DB, query string) error {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Query()
+	_, err = stmt.Query(query)
 	if err != nil {
 		return err
 	}
