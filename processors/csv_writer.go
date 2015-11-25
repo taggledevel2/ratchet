@@ -2,6 +2,7 @@ package processors
 
 import (
 	"io"
+	"sort"
 
 	"github.com/dailyburn/ratchet/data"
 	"github.com/dailyburn/ratchet/util"
@@ -33,6 +34,10 @@ func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	if w.header == nil {
 		for k := range objects[0] {
 			w.header = append(w.header, k)
+		}
+		sort.Strings(w.header)
+
+		for _, k := range w.header {
 			header_row = append(header_row, util.CSVString(k))
 		}
 	}
