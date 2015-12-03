@@ -27,7 +27,7 @@ func ExampleGetRequest() {
 		} else {
 			output += "NO\n"
 		}
-		output += "HTML contains Search Google?\n"
+		output += "HTML contains Google Search?\n"
 		if strings.Contains(string(d), "Google Search") {
 			output += "YES\n"
 		} else {
@@ -47,6 +47,6 @@ func ExampleGetRequest() {
 	// Output:
 	// Got HTML?
 	// YES
-	// HTML contains Search Google?
+	// HTML contains Google Search?
 	// YES
 }
