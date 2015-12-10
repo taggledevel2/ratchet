@@ -17,7 +17,7 @@ type CSVWriter struct {
 	Writer        *util.CSVWriter
 	WriteHeader   bool
 	headerWritten bool
-	header        []string
+	Header        []string
 }
 
 // NewCSVWriter returns a new CSVWriter wrapping the given io.Writer object
@@ -30,28 +30,28 @@ func (w *CSVWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 	objects, err := data.ObjectsFromJSON(d)
 	util.KillPipelineIfErr(err, killChan)
 
-	header_row := []string{}
-	if w.header == nil {
+	if w.Header == nil {
 		for k := range objects[0] {
-			w.header = append(w.header, k)
+			w.Header = append(w.Header, k)
 		}
-		sort.Strings(w.header)
-
-		for _, k := range w.header {
-			header_row = append(header_row, util.CSVString(k))
-		}
+		sort.Strings(w.Header)
 	}
 
 	rows := [][]string{}
+
 	if w.WriteHeader && !w.headerWritten {
+		header_row := []string{}
+		for _, k := range w.Header {
+			header_row = append(header_row, util.CSVString(k))
+		}
 		rows = append(rows, header_row)
 		w.headerWritten = true
 	}
 
 	for _, object := range objects {
 		row := []string{}
-		for i := range w.header {
-			v := object[w.header[i]]
+		for i := range w.Header {
+			v := object[w.Header[i]]
 			row = append(row, util.CSVString(v))
 		}
 		rows = append(rows, row)
