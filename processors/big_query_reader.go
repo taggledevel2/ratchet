@@ -110,7 +110,7 @@ func (r *BigQueryReader) ForEachQueryData(d data.JSON, killChan chan error, forE
 		}
 	}
 	if r.AggregateResults {
-		logger.Info("BigQueryReader: sending aggregated resutls: len(rows) =", len(aggregatedData.Rows))
+		logger.Info("BigQueryReader: sending aggregated results: len(rows) =", len(aggregatedData.Rows))
 		d, err := data.JSONFromHeaderAndRows(aggregatedData.Headers, aggregatedData.Rows)
 		util.KillPipelineIfErr(err, killChan)
 		forEach(d) // pass back out via the forEach func
