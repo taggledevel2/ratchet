@@ -201,14 +201,15 @@ func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName strin
 	logger.Info("SQLInsertData: building INSERT for len(objects) =", len(objects))
 	insertSQL, vals := buildInsertSQL(objects, tableName, onDupKeyUpdate)
 
+	logger.Debug("SQLInsertData:", insertSQL)
+	logger.Debug("SQLInsertData: values", vals)
+
 	stmt, err := db.Prepare(insertSQL)
 	if err != nil {
+		logger.Debug("SQLInsertData: error preparing SQL")
 		return err
 	}
 	defer stmt.Close()
-
-	logger.Debug("SQLInsertData:", insertSQL)
-	// logger.Debug("SQLInsertData: values", vals)
 
 	res, err := stmt.Exec(vals...)
 	if err != nil {
