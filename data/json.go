@@ -88,7 +88,11 @@ func JSONFromHeaderAndRows(header []string, rows [][]interface{}) (JSON, error) 
 			if err != nil {
 				return nil, err
 			}
-			b.Write([]byte(`"` + header[j] + `":` + string(d)))
+			headerStr := "null"
+			if len(header) > 0 && len(header) > j {
+				headerStr = header[j]
+			}
+			b.Write([]byte(`"` + headerStr + `":` + string(d)))
 		}
 		b.Write([]byte("}"))
 	}
