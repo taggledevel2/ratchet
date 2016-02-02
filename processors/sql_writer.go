@@ -23,6 +23,7 @@ type SQLWriter struct {
 	TableName        string
 	OnDupKeyUpdate   bool
 	ConcurrencyLevel int // See ConcurrentDataProcessor
+	BatchSize        int
 }
 
 // SQLWriterData is a custom data structure you can send into a SQLWriter
@@ -55,11 +56,11 @@ func (s *SQLWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan
 		logger.Debug("SQLWriter: SQLWriterData scenario")
 		dd, err := data.NewJSON(wd.InsertData)
 		util.KillPipelineIfErr(err, killChan)
-		err = util.SQLInsertData(s.writeDB, dd, wd.TableName, s.OnDupKeyUpdate)
+		err = util.SQLInsertData(s.writeDB, dd, wd.TableName, s.OnDupKeyUpdate, s.BatchSize)
 		util.KillPipelineIfErr(err, killChan)
 	} else {
 		logger.Debug("SQLWriter: normal data scenario")
-		err = util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate)
+		err = util.SQLInsertData(s.writeDB, d, s.TableName, s.OnDupKeyUpdate, s.BatchSize)
 		util.KillPipelineIfErr(err, killChan)
 	}
 	logger.Info("SQLWriter: Write complete")

@@ -189,12 +189,27 @@ func ExecuteSQLQuery(db *sql.DB, query string) error {
 // (or an array of valid objects all with the same keys),
 // where the keys are column names and the
 // the values are SQL values to be inserted into those columns.
-func SQLInsertData(db *sql.DB, d data.JSON, tableName string, onDupKeyUpdate bool) error {
+func SQLInsertData(db *sql.DB, d data.JSON, tableName string, onDupKeyUpdate bool, batchSize int) error {
 	objects, err := data.ObjectsFromJSON(d)
 	if err != nil {
 		return err
 	}
-	return insertObjects(db, objects, tableName, onDupKeyUpdate)
+
+	if batchSize > 0 {
+		for i := 0; i < len(objects); i += batchSize {
+			maxIndex := i + batchSize
+			if maxIndex > len(objects) {
+				maxIndex = len(objects)
+			}
+			err = insertObjects(db, objects[i:maxIndex], tableName, onDupKeyUpdate)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else {
+		return insertObjects(db, objects, tableName, onDupKeyUpdate)
+	}
 }
 
 func insertObjects(db *sql.DB, objects []map[string]interface{}, tableName string, onDupKeyUpdate bool) error {
