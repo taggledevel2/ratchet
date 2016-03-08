@@ -39,6 +39,15 @@ func ExampleObjectsFromJSON() {
 	// Output: [map[One:1] map[Two:2]]
 }
 
+func ExampleObjectsFromJSONIsNull() {
+	d := []byte("null")
+
+	objects, _ := data.ObjectsFromJSON(d)
+
+	fmt.Println(fmt.Sprintf("%+v", objects))
+	// Output: []
+}
+
 func ExampleJSONFromHeaderAndRows() {
 	header := []string{"A", "B", "C"}
 	rows := [][]interface{}{
