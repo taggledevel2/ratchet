@@ -40,18 +40,25 @@ func ParseJSONSilent(d JSON, v interface{}) error {
 	return json.Unmarshal(d, v)
 }
 
-// ObjectsFromJSON is a helper for parsing a JSON into a slice of
+// ObjectsFromJSON is a helper for parsing JSON into a slice of
 // generic maps/objects. The use-case is when a stage is expecting
 // to receive either a JSON object or an array of JSON objects, and
 // want to deal with it in a generic fashion.
 func ObjectsFromJSON(d JSON) ([]map[string]interface{}, error) {
+	var objects []map[string]interface{}
+
+	// return if we have null instead of object(s).
+	if bytes.Equal(d, []byte("null")) {
+		logger.Debug("ObjectsFromJSON: received null. Expected object or objects. Skipping.")
+		return objects, nil
+	}
+
 	var v interface{}
 	err := ParseJSON(d, &v)
 	if err != nil {
 		return nil, err
 	}
 
-	var objects []map[string]interface{}
 	// check if we have a single object or a slice of objects
 	switch vv := v.(type) {
 	case []interface{}:
