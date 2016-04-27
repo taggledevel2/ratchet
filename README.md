@@ -23,9 +23,9 @@ Each data processor is receiving, processing, and then sending data to the next 
 
   Ratchet comes with vendored dependencies so it can work out of the box. However, if you prefer to vendor your 
   own dependencies then read vendor/vendor.json to get a list of its dependencies and their versions. Ratchet 
-  works with the vendor-spec, it will work with the [![govendor](https://github.com/kardianos/govendor) dependency
-  manager. After you have copied the dependencies into your projects' vendor.json, you can download them into your
-  project's vendor folder, along with Ratchet, by running:
+  works with the vendor-spec, so it will also work with the [![govendor](https://github.com/kardianos/govendor) 
+  dependency manager. After you have copied the dependencies into your project's vendor.json, you can download 
+  them into your project's vendor folder--along with ratchet--by running:
 
         go sync
         govendor add github.com/dailyburn/ratchet
