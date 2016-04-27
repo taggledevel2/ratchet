@@ -28,7 +28,7 @@ Each data processor is receiving, processing, and then sending data to the next 
   manager. After you have copied the dependencies into your project's vendor.json, you can download them into
   your project's vendor folder--along with ratchet--by running:
 
-        go sync
+        govendor sync
         govendor add github.com/dailyburn/ratchet
         govendor add github.com/dailyburn/ratchet/data
         govendor add github.com/dailyburn/ratchet/logger
