@@ -129,6 +129,12 @@
 			"revisionTime": "2015-08-06T13:46:45Z"
 		},
 		{
+			"checksumSHA1": "28nznojcl6Ejtm6I1tKozgy0isg=",
+			"path": "github.com/jlaffaye/ftp",
+			"revision": "025815df64030c144b86e368fedf80ee195fe464",
+			"revisionTime": "2016-02-29T21:52:38Z"
+		},
+		{
 			"checksumSHA1": "ss+6kcmkUGRUhwrx3RmE+C6rBhY=",
 			"path": "github.com/kisielk/sqlstruct",
 			"revision": "648daed35d49dac24a4bff253b190a80da3ab6a5",
