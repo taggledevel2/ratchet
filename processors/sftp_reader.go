@@ -8,10 +8,10 @@ import (
 )
 
 type SftpParameters struct {
-	server     string
-	username   string
-	path       string
-	authMethod []ssh.AuthMethod
+	server      string
+	username    string
+	path        string
+	authMethods []ssh.AuthMethod
 }
 
 type SftpReader struct {
@@ -25,8 +25,8 @@ type SftpReader struct {
 
 // NewSftpReader reads a single object at a given path, or walks through the
 // directory specified by the path (SftpReader.Walk must be set to true)
-func NewSftpReader(server string, username string, path string, authMethod []ssh.AuthMethod) *SftpReader {
-	r := SftpReader{params: &SftpParameters{server, username, path, authMethod}, initialized: false}
+func NewSftpReader(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpReader {
+	r := SftpReader{params: &SftpParameters{server, username, path, authMethods}, initialized: false}
 	r.IoReader.LineByLine = true
 }
 
@@ -50,7 +50,7 @@ func (r *SftpReader) ensureInitialized(killChan chan error) {
 		return
 	}
 
-	client, err := util.SftpClient(r.params.server, r.params.username, r.params.authMethod)
+	client, err := util.SftpClient(r.params.server, r.params.username, r.params.authMethods)
 	util.KillPipelineIfErr(err, killChan)
 
 	r.client = client

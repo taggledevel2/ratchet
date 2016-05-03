@@ -19,8 +19,8 @@ type SftpWriter struct {
 }
 
 // NewSftpWriter instantiates a new sftp writer, a connection to the remote server is delayed until data is recv'd by the writer
-func NewSftpWriter(server string, username string, path string, authMethod []ssh.AuthMethod) *SftpWriter {
-	return &SftpWriter{params: &SftpParameters{server, username, path, authMethod}, initialized: false}
+func NewSftpWriter(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpWriter {
+	return &SftpWriter{params: &SftpParameters{server, username, path, authMethods}, initialized: false}
 }
 
 // ProcessData writes data as is directly to the output file
@@ -47,7 +47,7 @@ func (w *SftpWriter) ensureInitialized(killChan chan error) {
 		return
 	}
 
-	client, err := util.SftpClient(w.params.server, w.params.username, w.params.authMethod)
+	client, err := util.SftpClient(w.params.server, w.params.username, w.params.authMethods)
 	if err != nil {
 		killChan <- err
 	}

@@ -1,23 +1,42 @@
 package util
 
 import (
+	"io/ioutil"
+
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
-func SftpClient(server string, username string, authMethd []ssh.AuthMethod) (*sftp.Client, error) {
-	var client *sftp.Client
-
+// Set up and return the sftp client
+func SftpClient(server string, username string, authMethod []ssh.AuthMethod) (client *sftp.Client, err error) {
 	ssh.ClientConfig
 	config := &ssh.ClientConfig{
 		User: username,
-		Auth: authMethd,
+		Auth: authMethod,
 	}
 
 	conn, err := ssh.Dial("tcp", server, config)
 	if err != nil {
-		return client, err
+		return
 	}
 
-	return sftp.NewClient(conn)
+	client = sftp.NewClient(conn)
+	return
+}
+
+// Generate an ssh.AuthMethod given the path of a private key
+func SftpKeyAuth(privateKeyPath string) (auth ssh.AuthMethod, err error) {
+	privateKey, err := ioutil.ReadFile(privateKeyPath)
+	if err != nil {
+		return
+	}
+
+	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if err != nil {
+		return
+	}
+
+	auth = ssh.PublicKeys(signer)
+
+	return
 }
