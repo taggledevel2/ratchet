@@ -9,6 +9,7 @@ import (
 	"github.com/jlaffaye/ftp"
 )
 
+// FtpWriter type represents an ftp writter processer
 type FtpWriter struct {
 	ftpFilepath   string
 	conn          *ftp.ServerConn
@@ -20,8 +21,7 @@ type FtpWriter struct {
 	path          string
 }
 
-// datatransfer.cj.com:21
-
+// NewFtpWriter instantiates new instance of an ftp writer
 func NewFtpWriter(host, username, password, path string) *FtpWriter {
 	return &FtpWriter{authenticated: false, host: host, username: username, password: password, path: path}
 }
