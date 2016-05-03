@@ -1,6 +1,6 @@
 // Copyright 2012 Kamil Kisiel. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the MIT
+// license which can be found in the LICENSE file.
 
 /*
 Package sqlstruct provides some convenience functions for using structs with
@@ -91,25 +91,23 @@ import (
 	"sync"
 )
 
-// NameMapper is used to convert struct fields which do not have sql tags
-// into database column names. The default mapper is a no-op.
+// NameMapper is the function used to convert struct fields which do not have sql tags
+// into database column names.
 //
-// Example override usage:
+// The default mapper converts field names to lower case. If instead you would prefer
+// field names converted to snake case, simply assign sqlstruct.ToSnakeCase to the variable:
 //
-//  FirstName => first_name
 //		sqlstruct.NameMapper = sqlstruct.ToSnakeCase
 //
-//  Any func(string)string can be used
-//
-//
-var NameMapper = strings.ToLower
+// Alternatively for a custom mapping, any func(string) string can be used instead.
+var NameMapper func(string) string = strings.ToLower
 
 // A cache of fieldInfos to save reflecting every time. Inspried by encoding/xml
 var finfos map[reflect.Type]fieldInfo
 var finfoLock sync.RWMutex
 
-// tagName is the name of the tag to use on struct fields
-const tagName = "sql"
+// TagName is the name of the tag to use on struct fields
+var TagName = "sql"
 
 // fieldInfo is a mapping of field tag values to their indices
 type fieldInfo map[string][]int
@@ -140,7 +138,7 @@ func getFieldInfo(typ reflect.Type) fieldInfo {
 	n := typ.NumField()
 	for i := 0; i < n; i++ {
 		f := typ.Field(i)
-		tag := f.Tag.Get(tagName)
+		tag := f.Tag.Get(TagName)
 
 		// Skip unexported fields or fields marked with "-"
 		if f.PkgPath != "" || tag == "-" {
@@ -260,6 +258,8 @@ func doScan(dest interface{}, rows Rows, alias string) error {
 	return rows.Scan(values...)
 }
 
+// ToSnakeCase converts a string to snake case, words separated with underscores.
+// It's intended to be used with NameMapper to map struct field names to snake case database fields.
 func ToSnakeCase(src string) string {
 	thisUpper := false
 	prevUpper := false
