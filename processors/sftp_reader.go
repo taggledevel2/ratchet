@@ -31,7 +31,7 @@ func NewSftpReader(server string, username string, path string, authMethods ...s
 
 // NewSftpReaderByClient instantiates a new sftp reader using an existing connection to the remote server
 func NewSftpReaderByClient(client *sftp.Client, path string) *SftpReader {
-	r := SftpReader{parameters: &util.SftpParameters{path: path}, client: client, initialized: true}
+	r := SftpReader{parameters: &util.SftpParameters{Path: path}, client: client, initialized: true}
 	r.IoReader.LineByLine = true
 	return &r
 }
