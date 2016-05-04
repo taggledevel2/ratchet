@@ -17,14 +17,17 @@ type CSVWriter struct {
 	QuoteEscape       string
 }
 
-func NewCSVWriter(w io.Writer) *CSVWriter {
+func NewCSVWriter() *CSVWriter {
 	return &CSVWriter{
 		Comma:             ',',
 		UseCRLF:           false,
-		w:                 bufio.NewWriter(w),
 		AlwaysEncapsulate: true,
 		QuoteEscape:       `\`,
 	}
+}
+
+func (w *CSVWriter) SetWriter(writer io.Writer) {
+	w.w = bufio.NewWriter(writer)
 }
 
 func (w *CSVWriter) Write(record []string) (err error) {
