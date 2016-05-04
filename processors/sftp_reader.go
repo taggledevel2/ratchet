@@ -7,6 +7,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// SftpReader reads a single object at a given path, or walks through the
+// directory specified by the path (SftpReader.Walk must be set to true)
 type SftpReader struct {
 	IoReader      // embeds IoReader
 	parameters    *util.SftpParameters
@@ -16,10 +18,16 @@ type SftpReader struct {
 	initialized   bool
 }
 
-// NewSftpReader reads a single object at a given path, or walks through the
-// directory specified by the path (SftpReader.Walk must be set to true)
+// NewSftpReader instantiates a new sftp reader, a connection to the remote server is delayed until data is recv'd by the reader
 func NewSftpReader(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpReader {
 	r := SftpReader{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false}
+	r.IoReader.LineByLine = true
+	return &r
+}
+
+// NewSftpReaderByClient instantiates a new sftp reader using an existing connection to the remote server
+func NewSftpReaderByClient(client *sftp.Client, path string) *SftpReader {
+	r := SftpReader{parameters: &util.SftpParameters{path: path}, client: client, initialized: true}
 	r.IoReader.LineByLine = true
 	return &r
 }
