@@ -7,16 +7,9 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type SftpParameters struct {
-	server      string
-	username    string
-	path        string
-	authMethods []ssh.AuthMethod
-}
-
 type SftpReader struct {
 	IoReader      // embeds IoReader
-	params        *SftpParameters
+	parameters    *util.SftpParameters
 	client        *sftp.Client
 	DeleteObjects bool
 	Walk          bool
@@ -26,8 +19,9 @@ type SftpReader struct {
 // NewSftpReader reads a single object at a given path, or walks through the
 // directory specified by the path (SftpReader.Walk must be set to true)
 func NewSftpReader(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpReader {
-	r := SftpReader{params: &SftpParameters{server, username, path, authMethods}, initialized: false}
+	r := SftpReader{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false}
 	r.IoReader.LineByLine = true
+	return &r
 }
 
 func (r *SftpReader) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
@@ -35,7 +29,7 @@ func (r *SftpReader) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 	if r.Walk {
 		r.walk(outputChan, killChan)
 	} else {
-		r.sendFile(r.params.path, outputChan, killChan)
+		r.sendFile(r.parameters.Path, outputChan, killChan)
 	}
 }
 
@@ -50,7 +44,7 @@ func (r *SftpReader) ensureInitialized(killChan chan error) {
 		return
 	}
 
-	client, err := util.SftpClient(r.params.server, r.params.username, r.params.authMethods)
+	client, err := util.SftpClient(r.parameters.Server, r.parameters.Username, r.parameters.AuthMethods)
 	util.KillPipelineIfErr(err, killChan)
 
 	r.client = client
@@ -58,7 +52,7 @@ func (r *SftpReader) ensureInitialized(killChan chan error) {
 }
 
 func (r *SftpReader) walk(outputChan chan data.JSON, killChan chan error) {
-	walker := r.client.Walk(r.params.path)
+	walker := r.client.Walk(r.parameters.Path)
 	for walker.Step() {
 		util.KillPipelineIfErr(walker.Err(), killChan)
 		if !walker.Stat().IsDir() {

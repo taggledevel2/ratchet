@@ -11,21 +11,20 @@ import (
 
 // SftpWriter is an inline writer to remote sftp server
 type SftpWriter struct {
-	ftpFilepath string
 	client      *sftp.Client
 	file        *sftp.File
-	params      *SftpParameters
+	parameters  *util.SftpParameters
 	initialized bool
 }
 
 // NewSftpWriter instantiates a new sftp writer, a connection to the remote server is delayed until data is recv'd by the writer
 func NewSftpWriter(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpWriter {
-	return &SftpWriter{params: &SftpParameters{server, username, path, authMethods}, initialized: false}
+	return &SftpWriter{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false}
 }
 
 // ProcessData writes data as is directly to the output file
 func (w *SftpWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killChan chan error) {
-	logger.Debug("FTPWriter Process data:", string(d))
+	logger.Debug("SftpWriter Process data:", string(d))
 	w.ensureInitialized(killChan)
 	_, e := w.file.Write([]byte(d))
 	util.KillPipelineIfErr(e, killChan)
@@ -47,12 +46,12 @@ func (w *SftpWriter) ensureInitialized(killChan chan error) {
 		return
 	}
 
-	client, err := util.SftpClient(w.params.server, w.params.username, w.params.authMethods)
-	if err != nil {
-		killChan <- err
-	}
+	client, err := util.SftpClient(w.parameters.Server, w.parameters.Username, w.parameters.AuthMethods)
+	util.KillPipelineIfErr(err, killChan)
 
-	file, err := client.Create(w.params.path)
+	logger.Info("Path", w.parameters.Path)
+
+	file, err := client.Create(w.parameters.Path)
 	util.KillPipelineIfErr(err, killChan)
 
 	w.client = client

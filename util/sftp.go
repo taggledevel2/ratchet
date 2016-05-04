@@ -7,9 +7,17 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+type SftpParameters struct {
+	Server      string
+	Username    string
+	Path        string
+	AuthMethods []ssh.AuthMethod
+}
+
 // Set up and return the sftp client
-func SftpClient(server string, username string, authMethod []ssh.AuthMethod) (client *sftp.Client, err error) {
-	ssh.ClientConfig
+func SftpClient(server string, username string, authMethod []ssh.AuthMethod, opts ...func(*sftp.Client) error) (*sftp.Client, error) {
+	var client *sftp.Client
+
 	config := &ssh.ClientConfig{
 		User: username,
 		Auth: authMethod,
@@ -17,11 +25,10 @@ func SftpClient(server string, username string, authMethod []ssh.AuthMethod) (cl
 
 	conn, err := ssh.Dial("tcp", server, config)
 	if err != nil {
-		return
+		return client, err
 	}
 
-	client = sftp.NewClient(conn)
-	return
+	return sftp.NewClient(conn, opts...)
 }
 
 // Generate an ssh.AuthMethod given the path of a private key
