@@ -8,19 +8,23 @@ import (
 )
 
 // SftpReader reads a single object at a given path, or walks through the
-// directory specified by the path (SftpReader.Walk must be set to true)
+// directory specified by the path (SftpReader.Walk must be set to true).
+//
+// To only send full paths (and not file contents), set FileNamesOnly to true.
+// If FileNamesOnly is set to true, DeleteObjects will be ignored.
 type SftpReader struct {
 	IoReader      // embeds IoReader
 	parameters    *util.SftpParameters
 	client        *sftp.Client
 	DeleteObjects bool
 	Walk          bool
+	FileNamesOnly bool
 	initialized   bool
 }
 
 // NewSftpReader instantiates a new sftp reader, a connection to the remote server is delayed until data is recv'd by the reader
 func NewSftpReader(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpReader {
-	r := SftpReader{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false}
+	r := SftpReader{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false, DeleteObjects: false, FileNamesOnly: false}
 	r.IoReader.LineByLine = true
 	return &r
 }
@@ -37,7 +41,7 @@ func (r *SftpReader) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 	if r.Walk {
 		r.walk(outputChan, killChan)
 	} else {
-		r.sendFile(r.parameters.Path, outputChan, killChan)
+		r.sendObject(r.parameters.Path, outputChan, killChan)
 	}
 }
 
@@ -64,14 +68,26 @@ func (r *SftpReader) walk(outputChan chan data.JSON, killChan chan error) {
 	for walker.Step() {
 		util.KillPipelineIfErr(walker.Err(), killChan)
 		if !walker.Stat().IsDir() {
-			r.sendFile(walker.Path(), outputChan, killChan)
+			r.sendObject(walker.Path(), outputChan, killChan)
 		}
 	}
 }
 
-func (r *SftpReader) sendFile(path string, outputChan chan data.JSON, killChan chan error) {
-	r.ensureInitialized(killChan)
+func (r *SftpReader) sendObject(path string, outputChan chan data.JSON, killChan chan error) {
+	if r.FileNamesOnly {
+		r.sendFilePath(path, outputChan, killChan)
+	} else {
+		r.sendFile(path, outputChan, killChan)
+	}
+}
 
+func (r *SftpReader) sendFilePath(path string, outputChan chan data.JSON, killChan chan error) {
+	d, err := data.NewJSON(path)
+	util.KillPipelineIfErr(err, killChan)
+	outputChan <- d
+}
+
+func (r *SftpReader) sendFile(path string, outputChan chan data.JSON, killChan chan error) {
 	file, err := r.client.Open(path)
 	defer file.Close()
 
