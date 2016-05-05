@@ -20,18 +20,41 @@ type SftpReader struct {
 	Walk          bool
 	FileNamesOnly bool
 	initialized   bool
+	CloseOnFinish bool
 }
 
 // NewSftpReader instantiates a new sftp reader, a connection to the remote server is delayed until data is recv'd by the reader
+// By default, the connection to the remote client will be closed in the Finish() func.
+// Set CloseOnFinish to false to manage the connection manually.
 func NewSftpReader(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpReader {
-	r := SftpReader{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false, DeleteObjects: false, FileNamesOnly: false}
+	r := SftpReader{
+		parameters: &util.SftpParameters{
+			Server:      server,
+			Username:    username,
+			Path:        path,
+			AuthMethods: authMethods,
+		},
+		initialized:   false,
+		DeleteObjects: false,
+		FileNamesOnly: false,
+		CloseOnFinish: true,
+	}
 	r.IoReader.LineByLine = true
 	return &r
 }
 
-// NewSftpReaderByClient instantiates a new sftp reader using an existing connection to the remote server
+// NewSftpReaderByClient instantiates a new sftp reader using an existing connection to the remote server.
+// By default, the connection to the remote client will *not* be closed in the Finish() func.
+// Set CloseOnFinish to true to have this processor clean up the connection when it's done.
 func NewSftpReaderByClient(client *sftp.Client, path string) *SftpReader {
-	r := SftpReader{parameters: &util.SftpParameters{Path: path}, client: client, initialized: true}
+	r := SftpReader{
+		parameters:    &util.SftpParameters{Path: path},
+		client:        client,
+		initialized:   true,
+		DeleteObjects: false,
+		FileNamesOnly: false,
+		CloseOnFinish: false,
+	}
 	r.IoReader.LineByLine = true
 	return &r
 }
@@ -45,7 +68,18 @@ func (r *SftpReader) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 	}
 }
 
-func (r *SftpReader) Finish(outputChan chan data.JSON, killChan chan error) {}
+// Finish optionally closes open references to the remote server
+func (r *SftpReader) Finish(outputChan chan data.JSON, killChan chan error) {
+	if r.CloseOnFinish {
+		r.CloseClient()
+	}
+}
+
+// As the remote client itself is not exposed, you can manually close its connection
+// through this func
+func (r *SftpReader) CloseClient() {
+	r.client.Close()
+}
 
 func (r *SftpReader) String() string {
 	return "SftpReader"

@@ -11,15 +11,35 @@ import (
 
 // SftpWriter is an inline writer to remote sftp server
 type SftpWriter struct {
-	client      *sftp.Client
-	file        *sftp.File
-	parameters  *util.SftpParameters
-	initialized bool
+	client        *sftp.Client
+	file          *sftp.File
+	parameters    *util.SftpParameters
+	initialized   bool
+	CloseOnFinish bool
 }
 
 // NewSftpWriter instantiates a new sftp writer, a connection to the remote server is delayed until data is recv'd by the writer
+// By default, the connection to the remote client will be closed in the Finish() func.
+// Set CloseOnFinish to false to manage the connection manually.
 func NewSftpWriter(server string, username string, path string, authMethods ...ssh.AuthMethod) *SftpWriter {
-	return &SftpWriter{parameters: &util.SftpParameters{server, username, path, authMethods}, initialized: false}
+	return &SftpWriter{
+		parameters: &util.SftpParameters{
+			Server:      server,
+			Username:    username,
+			Path:        path,
+			AuthMethods: authMethods,
+		},
+		initialized:   false,
+		CloseOnFinish: true,
+	}
+}
+
+// NewSftpWriterByFile allows you to manually manage the connection to the remote file object.
+// Use this if you want to write to the same file object across multiple pipelines.
+// By default, the connection to the remote client will *not* be closed in the Finish() func.
+// Set CloseOnFinish to true to have this processor clean up the connection when it's done.
+func NewSftpWriterByFile(file *sftp.File) *SftpWriter {
+	return &SftpWriter{file: file, initialized: true, CloseOnFinish: false}
 }
 
 // ProcessData writes data as is directly to the output file
@@ -30,10 +50,12 @@ func (w *SftpWriter) ProcessData(d data.JSON, outputChan chan data.JSON, killCha
 	util.KillPipelineIfErr(e, killChan)
 }
 
-// Finish closes open references to the remote file and server
+// Finish optionally closes open references to the remote file and server
 func (w *SftpWriter) Finish(outputChan chan data.JSON, killChan chan error) {
-	w.file.Close()
-	w.client.Close()
+	if w.CloseOnFinish {
+		w.file.Close()
+		w.client.Close()
+	}
 }
 
 func (f *SftpWriter) String() string {
