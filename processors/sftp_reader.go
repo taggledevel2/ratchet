@@ -116,16 +116,17 @@ func (r *SftpReader) sendObject(path string, outputChan chan data.JSON, killChan
 }
 
 func (r *SftpReader) sendFilePath(path string, outputChan chan data.JSON, killChan chan error) {
-	d, err := data.NewJSON(path)
+	sftpPath := util.SftpPath{Path: path}
+	d, err := data.NewJSON(sftpPath)
 	util.KillPipelineIfErr(err, killChan)
 	outputChan <- d
 }
 
 func (r *SftpReader) sendFile(path string, outputChan chan data.JSON, killChan chan error) {
 	file, err := r.client.Open(path)
-	defer file.Close()
 
 	util.KillPipelineIfErr(err, killChan)
+	defer file.Close()
 
 	r.IoReader.Reader = file
 	r.IoReader.ProcessData(nil, outputChan, killChan)

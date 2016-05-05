@@ -2,6 +2,7 @@ package util
 
 import (
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -12,6 +13,14 @@ type SftpParameters struct {
 	Username    string
 	Path        string
 	AuthMethods []ssh.AuthMethod
+}
+
+type SftpPath struct {
+	Path string `json:"path,omitempty"`
+}
+
+func (t SftpPath) FileName() string {
+	return filepath.Base(t.Path)
 }
 
 // Set up and return the sftp client
